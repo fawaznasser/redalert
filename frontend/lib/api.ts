@@ -7,9 +7,13 @@ import type {
 
 function defaultApiBaseUrl(): string {
   if (typeof window !== "undefined") {
-    return `${window.location.protocol}//${window.location.hostname}:8000`;
+    const { protocol, hostname } = window.location;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return `${protocol}//${hostname}:8000`;
+    }
+    return "https://redalertt.onrender.com";
   }
-  return "http://127.0.0.1:8000";
+  return "https://redalertt.onrender.com";
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? defaultApiBaseUrl();

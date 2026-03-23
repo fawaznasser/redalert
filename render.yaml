@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: redalert-api
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash -lc "python -m alembic upgrade head && python app/scripts/seed_regions.py --skip-if-exists && python app/scripts/seed_locations.py --path data/lebanon_named_locations.json --skip-if-exists && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    disk:
+      name: redalert-data
+      mountPath: /opt/render/project/src/backend/data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:////opt/render/project/src/backend/data/red_alert.db
+      - key: CORS_ORIGINS
+        value: https://redalert-web.onrender.com
+      - key: TELEGRAM_ENABLED
+        value: false
+      - key: TELEGRAM_API_ID
+        sync: false
+      - key: TELEGRAM_API_HASH
+        sync: false
+      - key: TELEGRAM_SESSION
+        sync: false
+      - key: TELEGRAM_CHANNEL
+        sync: false
+      - key: TELEGRAM_HISTORY_BACKFILL_LIMIT
+        value: 200
+      - key: TELEGRAM_POLL_INTERVAL_SECONDS
+        value: 5
+      - key: TELEGRAM_EDIT_SYNC_LIMIT
+        value: 50
+      - key: NOMINATIM_ENABLED
+        value: false
+      - key: NOMINATIM_USER_AGENT
+        value: red-alert-dashboard/1.0
+
+  - type: web
+    name: redalert-web
+    env: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npx next start -H 0.0.0.0 -p $PORT
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://redalert-api.onrender.com

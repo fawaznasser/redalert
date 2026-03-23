@@ -90,6 +90,36 @@ This starts:
 
 The compose flow runs migrations and seeds the sample South Lebanon region and sample locations automatically.
 
+## Render Deployment
+
+This repo includes a root [render.yaml](./render.yaml) blueprint for Render with:
+
+- `redalert-api` as the FastAPI backend
+- `redalert-web` as the Next.js frontend
+- a persistent disk mounted at `backend/data` so the SQLite file survives restarts
+
+Render will use these commands automatically from the blueprint:
+
+- backend build: `pip install -r requirements.txt`
+- backend start: `python -m alembic upgrade head && python app/scripts/seed_regions.py --skip-if-exists && python app/scripts/seed_locations.py --path data/lebanon_named_locations.json --skip-if-exists && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- frontend build: `npm install && npm run build`
+- frontend start: `npx next start -H 0.0.0.0 -p $PORT`
+
+Before turning on live Telegram ingestion in Render, set these backend environment variables in the Render dashboard:
+
+```env
+TELEGRAM_ENABLED=true
+TELEGRAM_API_ID=...
+TELEGRAM_API_HASH=...
+TELEGRAM_SESSION=...
+TELEGRAM_CHANNEL=redlinkleb
+```
+
+If your Render service URLs differ from the defaults in `render.yaml`, update:
+
+- backend `CORS_ORIGINS`
+- frontend `NEXT_PUBLIC_API_BASE_URL`
+
 ## Telegram Configuration
 
 Set these in `backend/.env`:

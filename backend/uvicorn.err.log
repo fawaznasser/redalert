@@ -1,0 +1,9 @@
+INFO:     Started server process [16644]
+INFO:     Waiting for application startup.
+2026-03-23 17:17:39,721 INFO telethon.network.mtprotosender Connecting to 149.154.167.91:443/TcpFull...
+INFO:     Application startup complete.
+2026-03-23 17:17:39,723 WARNING telethon.network.mtprotosender Attempt 1 at connecting failed: PermissionError: [WinError 5] Access is denied
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-03-23 17:17:40,726 WARNING telethon.network.mtprotosender Attempt 2 at connecting failed: PermissionError: [WinError 5] Access is denied
+2026-03-23 17:17:41,750 WARNING telethon.network.mtprotosender Attempt 3 at connecting failed: PermissionError: [WinError 5] Access is denied
+2026-03-23 17:17:42,754 WARNING telethon.network.mtprotosender Attempt 4 at connecting failed: PermissionError: [WinError 5] Access is denied

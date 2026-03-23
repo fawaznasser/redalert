@@ -1,0 +1,92 @@
+[
+  {
+    "name_ar": "غندورية",
+    "name_en": "Ghandouriyeh",
+    "alt_names": ["غندوريه"],
+    "district": "Tyre",
+    "governorate": "South Lebanon",
+    "latitude": 33.3536,
+    "longitude": 35.4764
+  },
+  {
+    "name_ar": "برج قلويه",
+    "name_en": "Burj Qalawiyah",
+    "alt_names": ["برج_قلويه"],
+    "district": "Bint Jbeil",
+    "governorate": "Nabatieh",
+    "latitude": 33.2732,
+    "longitude": 35.5031
+  },
+  {
+    "name_ar": "حولا",
+    "name_en": "Houla",
+    "alt_names": [],
+    "district": "Marjayoun",
+    "governorate": "Nabatieh",
+    "latitude": 33.1101,
+    "longitude": 35.5827
+  },
+  {
+    "name_ar": "مركبا",
+    "name_en": "Markaba",
+    "alt_names": [],
+    "district": "Marjayoun",
+    "governorate": "Nabatieh",
+    "latitude": 33.1084,
+    "longitude": 35.5232
+  },
+  {
+    "name_ar": "الخيام",
+    "name_en": "Khiam",
+    "alt_names": ["خيام"],
+    "district": "Marjayoun",
+    "governorate": "Nabatieh",
+    "latitude": 33.3281,
+    "longitude": 35.6134
+  },
+  {
+    "name_ar": "تبنين",
+    "name_en": "Tebnine",
+    "alt_names": [],
+    "district": "Bint Jbeil",
+    "governorate": "Nabatieh",
+    "latitude": 33.1945,
+    "longitude": 35.4082
+  },
+  {
+    "name_ar": "ميس الجبل",
+    "name_en": "Mays al Jabal",
+    "alt_names": ["ميس_الجبل", "ميس الجبل"],
+    "district": "Marjayoun",
+    "governorate": "Nabatieh",
+    "latitude": 33.16944,
+    "longitude": 35.52556
+  },
+  {
+    "name_ar": "مجدل سلم",
+    "name_en": "Majdel Selm",
+    "alt_names": ["مجدل_سلم", "مجدل سليم"],
+    "district": "Marjayoun",
+    "governorate": "Nabatieh",
+    "latitude": 33.22222,
+    "longitude": 35.46472
+  },
+  {
+    "name_ar": "أرنون",
+    "name_en": "Arnoun",
+    "alt_names": ["ارنون", "أرنون"],
+    "district": "Nabatieh",
+    "governorate": "Nabatieh",
+    "latitude": 33.33166,
+    "longitude": 35.52639
+  },
+  {
+    "name_ar": "يحمر الشقيف",
+    "name_en": "Yohmor al-Shaqif",
+    "alt_names": ["يحمر", "يحمر_الشقيف", "يحمر شقيف"],
+    "district": "Nabatieh",
+    "governorate": "Nabatieh",
+    "latitude": 33.30972,
+    "longitude": 35.51694
+  }
+]

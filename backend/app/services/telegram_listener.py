@@ -196,15 +196,20 @@ class TelegramListener:
             session.close()
 
     async def stop(self) -> None:
+        if self._sync_task is not None:
+            self._sync_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._sync_task
+            self._sync_task = None
+
         if self.client is not None:
-            await self.client.disconnect()
+            with suppress(Exception):
+                await self.client.disconnect()
+            self.client = None
 
-        if self._runner_task is None:
-            return
-
-        self._runner_task.cancel()
-        try:
-            await self._runner_task
-        except asyncio.CancelledError:
-            pass
+        if self._runner_task is not None:
+            self._runner_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._runner_task
+            self._runner_task = None
         logger.info("Telegram listener stopped")

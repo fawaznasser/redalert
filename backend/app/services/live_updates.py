@@ -35,7 +35,12 @@ class LiveUpdateBroker:
     def publish_from_thread(self, payload: dict[str, Any]) -> None:
         if self._loop is None:
             return
-        asyncio.run_coroutine_threadsafe(self.publish(payload), self._loop)
+        if self._loop.is_closed():
+            return
+        try:
+            asyncio.run_coroutine_threadsafe(self.publish(payload), self._loop)
+        except RuntimeError:
+            return
 
 
 live_updates = LiveUpdateBroker()

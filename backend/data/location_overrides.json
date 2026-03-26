@@ -1,0 +1,32 @@
+[
+  {
+    "name_ar": "غندورية",
+    "name_en": "Ghandouriyeh",
+    "alt_names": ["الغندورية", "غندوريه"],
+    "district": "Bint Jbeil",
+    "governorate": "Nabatieh",
+    "latitude": 33.3694,
+    "longitude": 35.4834,
+    "source": "manual_override"
+  },
+  {
+    "name_ar": "الفنار",
+    "name_en": "El Fanar",
+    "alt_names": ["فنار", "Fanar", "El Fanar", "Al Fanar"],
+    "district": "Matn",
+    "governorate": "Mount Lebanon",
+    "latitude": 33.87806,
+    "longitude": 35.57806,
+    "source": "manual_override"
+  },
+  {
+    "name_ar": "حومين",
+    "name_en": "Houmine Area",
+    "alt_names": ["حومين الفوقا", "حومين التحتا"],
+    "district": "Nabatieh",
+    "governorate": "Nabatieh",
+    "latitude": 33.45889,
+    "longitude": 35.46542,
+    "source": "manual_override"
+  }
+]

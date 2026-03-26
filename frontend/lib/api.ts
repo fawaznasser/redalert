@@ -42,6 +42,14 @@ function buildFilterParams(filters: DashboardFilters): URLSearchParams {
   if (filters.type !== "all") {
     params.set("type", filters.type);
   }
+  if (filters.selectedDate) {
+    const from = new Date(`${filters.selectedDate}T00:00:00.000Z`);
+    const to = new Date(`${filters.selectedDate}T23:59:59.999Z`);
+    params.set("from", from.toISOString());
+    params.set("to", to.toISOString());
+    params.set("active_only", "false");
+    return params;
+  }
   const from = timeframeToFrom(filters.timeframe);
   if (from) {
     params.set("from", from);
@@ -70,8 +78,11 @@ export interface DashboardPayload {
 
 export async function fetchDashboardPayload(filters: DashboardFilters): Promise<DashboardPayload> {
   const filterParams = buildFilterParams(filters);
-  filterParams.set("limit", "100");
-  filterParams.set("raw_limit", "20");
+  filterParams.set("limit", "30");
+  filterParams.set("raw_limit", "8");
+  filterParams.set("include_raw_messages", "false");
+  filterParams.set("include_regions", "false");
+  filterParams.set("include_pipeline", "false");
   const payload = await fetchJson<DashboardResponse>("/dashboard", filterParams);
   return {
     stats: payload.stats,

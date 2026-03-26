@@ -10,10 +10,12 @@ class EventType(str, Enum):
     drone_movement = "drone_movement"
     fighter_jet_movement = "fighter_jet_movement"
     helicopter_movement = "helicopter_movement"
+    ground_incursion = "ground_incursion"
 
 
 class LocationMode(str, Enum):
     exact = "exact"
+    inferred = "inferred"
     regional = "regional"
 
 

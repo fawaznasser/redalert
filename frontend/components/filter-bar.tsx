@@ -35,6 +35,7 @@ export default function FilterBar({
             <option value="drone_movement">Drone</option>
             <option value="fighter_jet_movement">Fighter jet</option>
             <option value="helicopter_movement">Helicopter</option>
+            <option value="ground_incursion">Incursion</option>
           </select>
         </label>
         <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">

@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     telegram_api_hash: str | None = None
     telegram_session: str | None = None
     telegram_channel: str | None = None
+    telegram_secondary_channel: str | None = None
     telegram_history_backfill_limit: int = 50
     telegram_poll_interval_seconds: int = 5
     telegram_edit_sync_limit: int = 15
@@ -80,8 +81,18 @@ class Settings(BaseSettings):
             and self.telegram_api_id
             and self.telegram_api_hash
             and self.telegram_session
-            and self.telegram_channel
+            and self.telegram_channels
         )
+
+    @property
+    def telegram_channels(self) -> list[str]:
+        channels: list[str] = []
+        for value in (self.telegram_channel, self.telegram_secondary_channel):
+            if value:
+                normalized = str(value).strip()
+                if normalized and normalized not in channels:
+                    channels.append(normalized)
+        return channels
 
 
 settings = Settings()

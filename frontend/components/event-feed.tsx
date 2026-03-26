@@ -9,6 +9,7 @@ const badgeTone: Record<string, string> = {
   drone_movement: "bg-steel/15 text-steel",
   fighter_jet_movement: "bg-ember/15 text-ember",
   helicopter_movement: "bg-olive/15 text-olive",
+  ground_incursion: "bg-emerald-100 text-emerald-700",
 };
 
 function excerpt(text: string): string {

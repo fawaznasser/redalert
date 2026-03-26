@@ -14,9 +14,8 @@ if str(ROOT_DIR) not in sys.path:
 
 from app.db import SessionLocal
 from app.models.raw_message import RawMessage
-from app.services.event_service import build_events_for_raw_message
+from app.services.event_service import _parse_message_for_channel, build_events_for_raw_message
 from app.services.location_matcher import match_locations
-from app.services.parser import parse_message_text
 
 
 def main() -> None:
@@ -55,7 +54,7 @@ def main() -> None:
                     session.delete(existing_event)
                 session.flush()
 
-            parsed = parse_message_text(row.message_text)
+            parsed = _parse_message_for_channel(row.channel_name, row.message_text)
             if parsed is None or parsed.event_type is None:
                 continue
 

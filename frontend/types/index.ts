@@ -1,5 +1,5 @@
-export type EventType = "drone_movement" | "fighter_jet_movement" | "helicopter_movement";
-export type LocationMode = "exact" | "regional";
+export type EventType = "drone_movement" | "fighter_jet_movement" | "helicopter_movement" | "ground_incursion";
+export type LocationMode = "exact" | "inferred" | "regional";
 export type Timeframe = "24h" | "7d" | "30d" | "all";
 
 export interface EventRead {
@@ -124,4 +124,5 @@ export interface DashboardResponse {
 export interface DashboardFilters {
   type: EventType | "all";
   timeframe: Timeframe;
+  selectedDate: string | null;
 }

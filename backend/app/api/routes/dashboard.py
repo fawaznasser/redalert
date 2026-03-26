@@ -15,7 +15,7 @@ from app.schemas.events import EventListResponse, EventRead, MapEventsResponse, 
 from app.schemas.raw_messages import RawMessageListResponse
 from app.schemas.regions import RegionRead
 from app.schemas.stats import StatsResponse
-from app.services.event_service import get_map_events, get_stats, list_events
+from app.services.event_service import get_map_events, get_stats, get_stats_for_filters, list_events
 from app.services.raw_message_service import list_recent_raw_messages
 
 router = APIRouter(tags=["dashboard"])
@@ -30,6 +30,10 @@ def get_dashboard(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     raw_limit: int = Query(default=10, ge=1, le=100),
+    active_only: bool = Query(default=True),
+    include_raw_messages: bool = Query(default=True),
+    include_regions: bool = Query(default=True),
+    include_pipeline: bool = Query(default=True),
     db: Session = Depends(get_db),
 ) -> DashboardResponse:
     total, events = list_events(
@@ -40,10 +44,21 @@ def get_dashboard(
         location_mode=location_mode,
         limit=limit,
         offset=offset,
+        active_only=active_only,
     )
-    point_events, regional_events = get_map_events(db, event_type=type, from_date=from_, to_date=to)
-    raw_total, raw_messages = list_recent_raw_messages(db, limit=raw_limit)
-    regions = db.scalars(select(Region).order_by(Region.name.asc())).all()
+    point_events, regional_events = get_map_events(
+        db,
+        event_type=type,
+        from_date=from_,
+        to_date=to,
+        active_only=active_only,
+    )
+    raw_total = 0
+    raw_messages = []
+    if include_raw_messages or include_pipeline:
+        raw_total, raw_messages = list_recent_raw_messages(db, limit=raw_limit)
+
+    regions = db.scalars(select(Region).order_by(Region.name.asc())).all() if include_regions else []
 
     event_items = [
         EventRead(
@@ -54,7 +69,7 @@ def get_dashboard(
             is_precise=event.is_precise,
             location_id=event.location_id,
             region_id=event.region_id,
-            location_name=event.location.name_ar if event.location else None,
+            location_name=event.location.name_ar if event.location else event.location_name_raw,
             region_slug=event.region.slug if event.region else None,
             region_name=event.region.name if event.region else None,
             event_time=event.event_time,
@@ -92,29 +107,50 @@ def get_dashboard(
         if event.region is not None
     ]
 
-    region_reads = [
-        RegionRead(id=region.id, slug=region.slug, name=region.name, geojson=json.loads(region.geojson))
-        for region in regions
-    ]
+    region_reads = (
+        [
+            RegionRead(id=region.id, slug=region.slug, name=region.name, geojson=json.loads(region.geojson))
+            for region in regions
+        ]
+        if include_regions
+        else []
+    )
 
-    recent_structured = sum(1 for item in raw_messages if item.event_types)
-    recent_mapped = sum(1 for item in raw_messages if item.matched_locations)
-    recent_unmatched = sum(1 for item in raw_messages if item.unmatched_locations)
+    recent_structured = sum(1 for item in raw_messages if item.event_types) if include_pipeline else 0
+    recent_mapped = sum(1 for item in raw_messages if item.matched_locations) if include_pipeline else 0
+    recent_unmatched = sum(1 for item in raw_messages if item.unmatched_locations) if include_pipeline else 0
 
     return DashboardResponse(
         snapshot_at=datetime.now(timezone.utc),
-        stats=StatsResponse(**get_stats(db)),
+        stats=StatsResponse(
+            **(
+                get_stats(db)
+                if active_only and from_ is None and to is None and location_mode is None and type is None
+                else get_stats_for_filters(
+                    db,
+                    event_type=type,
+                    from_date=from_,
+                    to_date=to,
+                    location_mode=location_mode,
+                    active_only=active_only,
+                )
+            )
+        ),
         events=EventListResponse(items=event_items, total=total, limit=limit, offset=offset),
         map=MapEventsResponse(points=map_points, regional_events=map_regionals),
         regions=region_reads,
-        raw_messages=RawMessageListResponse(items=raw_messages, total=raw_total, limit=raw_limit),
+        raw_messages=RawMessageListResponse(
+            items=raw_messages if include_raw_messages else [],
+            total=raw_total if include_raw_messages else 0,
+            limit=raw_limit if include_raw_messages else 0,
+        ),
         pipeline=PipelineSummary(
-            raw_messages_total=raw_total,
-            recent_raw_messages=len(raw_messages),
+            raw_messages_total=raw_total if include_pipeline else 0,
+            recent_raw_messages=len(raw_messages) if include_pipeline else 0,
             recent_structured_messages=recent_structured,
             recent_mapped_messages=recent_mapped,
             recent_unmatched_messages=recent_unmatched,
-            active_feed_events=total,
-            active_map_points=len(map_points),
+            active_feed_events=total if include_pipeline else 0,
+            active_map_points=len(map_points) if include_pipeline else 0,
         ),
     )

@@ -1,21 +1,27 @@
 "use client";
 
-import { CircleMarker, MapContainer, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
-import { useEffect } from "react";
+import { CircleMarker, MapContainer, Pane, Polyline, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { useEffect, useState } from "react";
 
 import { eventTypeLabel, formatDateTime, formatRelativeTime } from "@/lib/format";
-import type { EventRead, MapPoint } from "@/types";
+import type { MapPoint } from "@/types";
 
 interface DashboardMapProps {
   points: MapPoint[];
+  lang?: "ar" | "en";
   hasActiveFighterAlert?: boolean;
   hasActiveHelicopterAlert?: boolean;
+  hasCoastFighterThreat?: boolean;
+  hasBeirutFighterThreat?: boolean;
+  hasBeirutBoundFighterThreat?: boolean;
+  hasSouthFighterThreat?: boolean;
 }
 
 const markerStyles = {
   drone_movement: { radius: 9, fill: "#2d7cff", ring: "#75b5ff" },
   fighter_jet_movement: { radius: 8, fill: "#ff4d5f", ring: "#ff99a2" },
   helicopter_movement: { radius: 8, fill: "#ff8f3d", ring: "#ffc491" },
+  ground_incursion: { radius: 8, fill: "#29a46b", ring: "#7fd2a7" },
 } as const;
 
 const LEBANON_BOUNDS: [[number, number], [number, number]] = [
@@ -25,6 +31,50 @@ const LEBANON_BOUNDS: [[number, number], [number, number]] = [
 const MAP_CENTER: [number, number] = [33.88, 35.86];
 const MAP_DEFAULT_ZOOM = 9;
 const MAP_MAX_ZOOM = 18;
+const COAST_FIGHTER_PATH: [number, number][] = [
+  [33.1205, 35.1032],
+  [33.272, 35.2038],
+  [33.45, 35.3],
+  [33.62, 35.37],
+  [33.76, 35.48],
+  [33.89, 35.54],
+];
+const COAST_FIGHTER_MARKERS: [number, number][] = [
+  [33.272, 35.2038],
+  [33.62, 35.37],
+  [33.89, 35.54],
+];
+const BEIRUT_FIGHTER_PATH: [number, number][] = [
+  [33.9505, 35.4311],
+  [33.9175, 35.4625],
+  [33.895, 35.494],
+];
+const SOUTH_FIGHTER_PATH: [number, number][] = [
+  [33.24, 35.25],
+  [33.32, 35.42],
+  [33.4, 35.56],
+];
+
+function interpolatePath(path: [number, number][], progress: number): [number, number] {
+  if (path.length === 0) {
+    return [33.9175, 35.4625];
+  }
+  if (path.length === 1) {
+    return path[0];
+  }
+
+  const clamped = Math.max(0, Math.min(0.9999, progress));
+  const scaled = clamped * (path.length - 1);
+  const index = Math.floor(scaled);
+  const segmentProgress = scaled - index;
+  const start = path[index];
+  const end = path[Math.min(index + 1, path.length - 1)];
+
+  return [
+    start[0] + (end[0] - start[0]) * segmentProgress,
+    start[1] + (end[1] - start[1]) * segmentProgress,
+  ];
+}
 
 function MapViewportController() {
   const map = useMap();
@@ -39,29 +89,94 @@ function MapViewportController() {
 
 export default function DashboardMap({
   points,
+  lang = "en",
   hasActiveFighterAlert = false,
   hasActiveHelicopterAlert = false,
+  hasCoastFighterThreat = false,
+  hasBeirutFighterThreat = false,
+  hasBeirutBoundFighterThreat = false,
+  hasSouthFighterThreat = false,
 }: DashboardMapProps) {
+  const t =
+    lang === "ar"
+      ? {
+          fightersThreat: "تهديد المقاتلات",
+          helicopterThreat: "تهديد المروحيات",
+          coast: "الساحل",
+          towardBeirut: "باتجاه بيروت",
+          aboveBeirut: "فوق بيروت",
+          aboveSouth: "فوق الجنوب",
+          fighterMovement: "حركة مقاتلات",
+          unknown: "موقع غير معروف",
+          coastActive: "هناك حركة مقاتلات نشطة على الساحل الآن.",
+          beirutBoundActive: "هناك حركة مقاتلات باتجاه بيروت الآن.",
+          beirutActive: "هناك حركة مقاتلات فوق بيروت الآن.",
+          noneActive: "لا توجد مواقع دقيقة نشطة على الخريطة الآن.",
+          plottedNow: "المعروض الآن",
+        }
+      : {
+          fightersThreat: "Fighters Threat",
+          helicopterThreat: "Helicopter Threat",
+          coast: "الساحل",
+          towardBeirut: "باتجاه بيروت",
+          aboveBeirut: "فوق بيروت",
+          aboveSouth: "فوق الجنوب",
+          fighterMovement: "Fighter movement",
+          unknown: "Unknown location",
+          coastActive: "Coastal fighter movement is active right now.",
+          beirutBoundActive: "Fighter movement toward Beirut is active right now.",
+          beirutActive: "Fighter movement above Beirut is active right now.",
+          noneActive: "No exact locations are active on the map right now.",
+          plottedNow: "Plotted now",
+        };
+
+  const [beirutBoundProgress, setBeirutBoundProgress] = useState(0);
+  const [fighterSweepProgress, setFighterSweepProgress] = useState(0);
+
+  useEffect(() => {
+    if (!hasBeirutBoundFighterThreat && !hasSouthFighterThreat && !points.some((point) => point.event_type === "fighter_jet_movement")) {
+      setBeirutBoundProgress(0);
+      setFighterSweepProgress(0);
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setBeirutBoundProgress((current) => {
+        const next = current + 0.04;
+        return next >= 1 ? 0 : next;
+      });
+      setFighterSweepProgress((current) => {
+        const next = current + 0.05;
+        return next >= 1 ? 0 : next;
+      });
+    }, 180);
+
+    return () => window.clearInterval(interval);
+  }, [hasBeirutBoundFighterThreat, hasSouthFighterThreat, points]);
+
+  const beirutBoundCenter = interpolatePath(BEIRUT_FIGHTER_PATH, beirutBoundProgress);
+  const southFighterCenter = interpolatePath(SOUTH_FIGHTER_PATH, fighterSweepProgress);
+
   return (
-    <div className="relative h-full min-h-[380px] overflow-hidden rounded-[1.8rem] border border-[#ff5a66]/20 bg-[#081a31] shadow-panel sm:min-h-[460px] lg:min-h-[640px]">
+    <div className="official-panel relative h-full min-h-[380px] overflow-hidden rounded-[1.8rem] sm:min-h-[460px] lg:min-h-[640px]">
       {hasActiveFighterAlert || hasActiveHelicopterAlert ? (
         <div className="pointer-events-none absolute right-3 top-3 z-[1000] flex flex-col items-end gap-2 sm:right-4 sm:top-4">
           {hasActiveFighterAlert ? (
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#ff7f89]/35 bg-[#460b16]/92 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ff9ea6] shadow-panel backdrop-blur">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#d4deed] bg-white/98 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#173f91] shadow-[0_10px_24px_rgba(17,39,84,0.1)]">
               <span className="relative flex h-3 w-3">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff4d5f] opacity-60" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-[#ff4d5f]" />
               </span>
-              Fighters Threat
+              {t.fightersThreat}
             </div>
           ) : null}
           {hasActiveHelicopterAlert ? (
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#ffc491]/35 bg-[#4a2200]/92 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ffc491] shadow-panel backdrop-blur">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#d4deed] bg-white/98 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#173f91] shadow-[0_10px_24px_rgba(17,39,84,0.1)]">
               <span className="relative flex h-3 w-3">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff8f3d] opacity-60" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-[#ff8f3d]" />
               </span>
-              Helicopter Threat
+              {t.helicopterThreat}
             </div>
           ) : null}
         </div>
@@ -81,12 +196,151 @@ export default function DashboardMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <Pane name="drone-pane" style={{ zIndex: 610 }} />
+        <Pane name="incursion-pane" style={{ zIndex: 615 }} />
+        <Pane name="helicopter-pane" style={{ zIndex: 620 }} />
+        <Pane name="fighter-pane" style={{ zIndex: 680 }} />
         <MapViewportController />
+
+        {hasCoastFighterThreat ? (
+          <>
+            <Polyline
+              pane="fighter-pane"
+              positions={COAST_FIGHTER_PATH}
+              pathOptions={{
+                color: "#ff4d5f",
+                weight: 5,
+                opacity: 0.9,
+                lineCap: "round",
+                lineJoin: "round",
+                dashArray: "12 10",
+              }}
+            />
+            {COAST_FIGHTER_MARKERS.map((center, index) => (
+              <CircleMarker
+                key={`coast-fighter-${index}`}
+                center={center}
+                pane="fighter-pane"
+                radius={7}
+                pathOptions={{
+                  color: "#ff99a2",
+                  fillColor: "#ff4d5f",
+                  fillOpacity: 0.95,
+                  weight: 3,
+                }}
+              >
+                <Tooltip direction="top" offset={[0, -18]}>
+                  <div className="space-y-1">
+                    <p className="font-semibold">{t.coast}</p>
+                    <p className="text-xs">{t.fighterMovement}</p>
+                  </div>
+                </Tooltip>
+              </CircleMarker>
+            ))}
+          </>
+        ) : null}
+
+        {hasBeirutBoundFighterThreat ? (
+          <CircleMarker
+            center={beirutBoundCenter}
+            pane="fighter-pane"
+            radius={9}
+            pathOptions={{
+              color: "#ff99a2",
+              fillColor: "#ff4d5f",
+              fillOpacity: 0.95,
+              weight: 3,
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -18]}>
+              <div className="space-y-1">
+                <p className="font-semibold">{t.towardBeirut}</p>
+                <p className="text-xs">{t.fighterMovement}</p>
+              </div>
+            </Tooltip>
+          </CircleMarker>
+        ) : null}
+
+        {hasBeirutFighterThreat ? (
+          <>
+            <Polyline
+              pane="fighter-pane"
+              positions={BEIRUT_FIGHTER_PATH}
+              pathOptions={{
+                color: "#ff4d5f",
+                weight: 5,
+                opacity: 0.9,
+                lineCap: "round",
+                lineJoin: "round",
+                dashArray: "10 8",
+              }}
+            />
+            <CircleMarker
+              center={BEIRUT_FIGHTER_PATH[1]}
+              pane="fighter-pane"
+              radius={7}
+              pathOptions={{
+                color: "#ff99a2",
+                fillColor: "#ff4d5f",
+                fillOpacity: 0.95,
+                weight: 3,
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -18]}>
+                <div className="space-y-1">
+                  <p className="font-semibold">{t.aboveBeirut}</p>
+                  <p className="text-xs">{t.fighterMovement}</p>
+                </div>
+              </Tooltip>
+            </CircleMarker>
+          </>
+        ) : null}
+
+        {hasSouthFighterThreat ? (
+          <CircleMarker
+            center={southFighterCenter}
+            pane="fighter-pane"
+            radius={9}
+            pathOptions={{
+              color: "#ff99a2",
+              fillColor: "#ff4d5f",
+              fillOpacity: 0.95,
+              weight: 3,
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -18]}>
+              <div className="space-y-1">
+                <p className="font-semibold">{t.aboveSouth}</p>
+                <p className="text-xs">{t.fighterMovement}</p>
+              </div>
+            </Tooltip>
+          </CircleMarker>
+        ) : null}
 
         {points.map((point) => (
           <CircleMarker
             key={point.id}
-            center={[point.latitude, point.longitude]}
+            center={
+              point.event_type === "fighter_jet_movement"
+                ? interpolatePath(
+                    [
+                      [point.latitude - 0.01, point.longitude - 0.01],
+                      [point.latitude, point.longitude + 0.012],
+                      [point.latitude + 0.01, point.longitude - 0.004],
+                    ],
+                    fighterSweepProgress,
+                  )
+                : [point.latitude, point.longitude]
+            }
+            pane={
+              point.event_type === "fighter_jet_movement"
+                ? "fighter-pane"
+                : point.event_type === "ground_incursion"
+                  ? "incursion-pane"
+                  : point.event_type === "helicopter_movement"
+                    ? "helicopter-pane"
+                    : "drone-pane"
+            }
             radius={markerStyles[point.event_type].radius}
             pathOptions={{
               color: markerStyles[point.event_type].ring,
@@ -97,13 +351,13 @@ export default function DashboardMap({
           >
             <Tooltip direction="top" offset={[0, -18]}>
               <div className="space-y-1">
-                <p className="font-semibold">{point.location_name ?? "Unknown location"}</p>
+                <p className="font-semibold">{point.location_name ?? t.unknown}</p>
                 <p className="text-xs">{eventTypeLabel(point.event_type)}</p>
               </div>
             </Tooltip>
             <Popup>
               <div className="space-y-1">
-                <p className="font-semibold">{point.location_name ?? "Unknown location"}</p>
+                <p className="font-semibold">{point.location_name ?? t.unknown}</p>
                 <p>{eventTypeLabel(point.event_type)}</p>
                 <p>{formatDateTime(point.event_time)}</p>
               </div>
@@ -113,20 +367,26 @@ export default function DashboardMap({
       </MapContainer>
 
       {points.length === 0 ? (
-        <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-2xl border border-[#ff5a66]/18 bg-[#061325]/92 p-3 text-sm text-[#ff8a93] shadow-panel backdrop-blur sm:inset-x-4 sm:bottom-4 sm:p-4">
-          No exact locations are active on the map right now.
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-2xl border border-[#d4deed] bg-white/98 p-3 text-sm text-[#607393] shadow-[0_10px_28px_rgba(16,40,84,0.08)] sm:inset-x-4 sm:bottom-4 sm:p-4">
+          {hasCoastFighterThreat
+            ? t.coastActive
+            : hasBeirutBoundFighterThreat
+              ? t.beirutBoundActive
+              : hasBeirutFighterThreat
+                ? t.beirutActive
+                : t.noneActive}
         </div>
       ) : (
-        <div className="pointer-events-none absolute right-4 top-24 hidden w-[17rem] rounded-2xl border border-[#ff5a66]/18 bg-[#061325]/94 p-4 text-sm text-[#ff8a93] shadow-panel backdrop-blur sm:block">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#ff8a93]">Plotted now</p>
+        <div className="pointer-events-none absolute right-4 top-24 hidden w-[17rem] rounded-2xl border border-[#d4deed] bg-white/98 p-4 text-sm text-[#607393] shadow-[0_12px_30px_rgba(16,40,84,0.08)] sm:block">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6f82a4]">{t.plottedNow}</p>
           <div className="mt-3 space-y-2">
             {points.slice(0, 6).map((point) => (
               <div key={point.id} className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-[#ff5a66]">{point.location_name ?? "Unknown location"}</p>
-                  <p className="text-xs text-[#ff8a93]">{eventTypeLabel(point.event_type)}</p>
+                  <p className="font-semibold text-[#173f91]">{point.location_name ?? t.unknown}</p>
+                  <p className="text-xs text-[#607393]">{eventTypeLabel(point.event_type)}</p>
                 </div>
-                <p className="text-xs font-medium text-[#ff8a93]">{formatRelativeTime(point.event_time)}</p>
+                <p className="text-xs font-medium text-[#607393]">{formatRelativeTime(point.event_time)}</p>
               </div>
             ))}
           </div>

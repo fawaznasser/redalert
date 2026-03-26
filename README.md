@@ -75,7 +75,7 @@ npm install
 npm run dev
 ```
 
-Frontend will be available at `http://localhost:3000`.
+Frontend will be available at `http://localhost:3001`.
 
 ## Docker Compose
 
@@ -86,7 +86,7 @@ docker compose up --build
 This starts:
 
 - backend on `http://localhost:8000`
-- frontend on `http://localhost:3000`
+- frontend on `http://localhost:3001`
 
 The compose flow runs migrations and seeds the sample South Lebanon region and sample locations automatically.
 

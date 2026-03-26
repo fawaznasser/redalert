@@ -6,6 +6,7 @@ const eventLabels: Record<EventType, string> = {
   drone_movement: "Drone",
   fighter_jet_movement: "Fighter Jet",
   helicopter_movement: "Helicopter",
+  ground_incursion: "Incursion",
 };
 
 export function eventTypeLabel(eventType: EventType): string {
@@ -18,6 +19,9 @@ export function eventTypeDescription(eventType: EventType): string {
   }
   if (eventType === "fighter_jet_movement") {
     return "Fast jet movement or overflight";
+  }
+  if (eventType === "ground_incursion") {
+    return "Ground incursion or troop advance";
   }
   return "Rotary-wing aircraft movement";
 }
@@ -51,9 +55,10 @@ export function formatRelativeTime(value: string): string {
 }
 
 const eventDurations: Record<EventType, number> = {
-  drone_movement: 180,
+  drone_movement: 300,
   fighter_jet_movement: 20,
   helicopter_movement: 30,
+  ground_incursion: 300,
 };
 
 export function eventExpiryMinutes(eventType: EventType): number {

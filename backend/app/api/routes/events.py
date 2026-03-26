@@ -26,7 +26,7 @@ def _serialize_event(event: Event) -> EventRead:
         is_precise=event.is_precise,
         location_id=event.location_id,
         region_id=event.region_id,
-        location_name=event.location.name_ar if event.location else None,
+        location_name=event.location.name_ar if event.location else event.location_name_raw,
         region_slug=event.region.slug if event.region else None,
         region_name=event.region.name if event.region else None,
         event_time=event.event_time,

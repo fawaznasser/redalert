@@ -3,13 +3,13 @@ import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Red Zone Dashboard",
-  description: "Telegram-based air activity dashboard for southern Lebanon",
+  title: "الخروقات الجوية | Air Violations",
+  description: "Telegram-based air activity dashboard for Lebanon",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="ar">
       <body>{children}</body>
     </html>
   );

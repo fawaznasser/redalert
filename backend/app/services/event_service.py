@@ -16,14 +16,15 @@ from app.models.region import Region
 from app.schemas.common import EventType, LocationMode
 from app.services.live_updates import live_updates
 from app.services.location_matcher import LocationMatchResult, match_locations
-from app.services.parser import ParsedTelegramMessage, parse_message_text
+from app.services.parser import ParsedTelegramMessage, SpatialHint, parse_message_text, parse_secondary_channel_incursion_message
 
 logger = logging.getLogger(__name__)
 
 EVENT_ACTIVE_WINDOWS = {
-    EventType.drone_movement.value: timedelta(hours=3),
+    EventType.drone_movement.value: timedelta(hours=5),
     EventType.fighter_jet_movement.value: timedelta(minutes=20),
     EventType.helicopter_movement.value: timedelta(minutes=30),
+    EventType.ground_incursion.value: timedelta(hours=5),
 }
 CONTINUATION_LOOKBACK = timedelta(hours=6)
 
@@ -50,6 +51,44 @@ def _ensure_aware_datetime(value: datetime | None) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value
+
+
+def _normalize_channel_name(value: str | None) -> str | None:
+    if not value:
+        return None
+    channel = value.strip()
+    for prefix in ("https://t.me/", "http://t.me/", "t.me/"):
+        if channel.startswith(prefix):
+            channel = channel[len(prefix):]
+            break
+    return channel.removeprefix("@").strip() or None
+
+
+def _filter_event_type_for_channel(channel_name: str, event_type: EventType | None) -> EventType | None:
+    if event_type is None:
+        return None
+
+    normalized_channel = _normalize_channel_name(channel_name)
+    primary_channel = _normalize_channel_name(settings.telegram_channel)
+    secondary_channel = _normalize_channel_name(settings.telegram_secondary_channel)
+
+    if normalized_channel == secondary_channel:
+        return event_type if event_type == EventType.ground_incursion else None
+
+    if normalized_channel == primary_channel:
+        return None if event_type == EventType.ground_incursion else event_type
+
+    return event_type
+
+
+def _parse_message_for_channel(channel_name: str, source_text: str) -> ParsedTelegramMessage | None:
+    normalized_channel = _normalize_channel_name(channel_name)
+    secondary_channel = _normalize_channel_name(settings.telegram_secondary_channel)
+
+    if normalized_channel == secondary_channel:
+        return parse_secondary_channel_incursion_message(source_text)
+
+    return parse_message_text(source_text)
 
 
 def _publish_raw_update(
@@ -145,6 +184,51 @@ def _find_recent_regional_event(
     )
 
 
+def _build_inferred_coordinates(spatial_hint: SpatialHint, location_matches: LocationMatchResult) -> tuple[float, float] | None:
+    if spatial_hint.mode == "between" and len(location_matches.matches) >= 2:
+        first = location_matches.matches[0].location
+        second = location_matches.matches[1].location
+        return ((first.latitude + second.latitude) / 2, (first.longitude + second.longitude) / 2)
+
+    if spatial_hint.mode == "above" and location_matches.matches:
+        anchor = location_matches.matches[0].location
+        return (anchor.latitude + 0.008, anchor.longitude)
+
+    if spatial_hint.mode == "vicinity" and location_matches.matches:
+        anchor = location_matches.matches[0].location
+        return (anchor.latitude + 0.0035, anchor.longitude + 0.0035)
+
+    return None
+
+
+def _build_inferred_event(
+    *,
+    raw_message: RawMessage,
+    parsed_message: ParsedTelegramMessage,
+    event_time: datetime,
+    source_text: str,
+    spatial_hint: SpatialHint,
+    location_matches: LocationMatchResult,
+) -> Event | None:
+    coordinates = _build_inferred_coordinates(spatial_hint, location_matches)
+    if coordinates is None:
+        return None
+
+    return Event(
+        raw_message_id=raw_message.id,
+        event_type=parsed_message.event_type.value,
+        location_id=None,
+        region_id=None,
+        location_mode=LocationMode.inferred.value,
+        is_precise=False,
+        location_name_raw=spatial_hint.label,
+        event_time=event_time,
+        source_text=source_text,
+        latitude=coordinates[0],
+        longitude=coordinates[1],
+    )
+
+
 def build_events_for_raw_message(
     session: Session,
     *,
@@ -236,6 +320,19 @@ def build_events_for_raw_message(
                 )
                 new_events.append(event)
                 collected_events.append(event)
+    elif parsed_message.spatial_hint is not None:
+        anchor_matches = match_locations(session, parsed_message.spatial_hint.anchor_candidates)
+        inferred_event = _build_inferred_event(
+            raw_message=raw_message,
+            parsed_message=parsed_message,
+            event_time=event_time,
+            source_text=source_text,
+            spatial_hint=parsed_message.spatial_hint,
+            location_matches=anchor_matches,
+        )
+        if inferred_event is not None:
+            new_events.append(inferred_event)
+            collected_events.append(inferred_event)
 
     if new_events:
         session.add_all(new_events)
@@ -277,7 +374,7 @@ def ingest_message(
             event_time=event_time,
             serialized_payload=serialized_payload,
         ):
-            parsed_message = parse_message_text(source_text)
+            parsed_message = _parse_message_for_channel(channel_name, source_text)
             location_matches = match_locations(session, parsed_message.candidate_locations) if parsed_message else None
             return IngestResult(
                 raw_message=raw_message,
@@ -293,12 +390,22 @@ def ingest_message(
             session.delete(existing_event)
         session.flush()
 
-    parsed_message = parse_message_text(source_text)
+    parsed_message = _parse_message_for_channel(channel_name, source_text)
     if parsed_message is None:
         session.commit()
         session.refresh(raw_message)
         _publish_raw_update(raw_message=raw_message, event_time=event_time, created_events=[])
         return IngestResult(raw_message=raw_message, events=[], parsed_message=None, location_matches=None)
+
+    filtered_event_type = _filter_event_type_for_channel(channel_name, parsed_message.event_type)
+    if filtered_event_type != parsed_message.event_type:
+        parsed_message = ParsedTelegramMessage(
+            event_type=filtered_event_type,
+            event_tag=parsed_message.event_tag,
+            hashtags=parsed_message.hashtags,
+            candidate_locations=parsed_message.candidate_locations,
+            is_continuation=parsed_message.is_continuation,
+        )
 
     location_matches = match_locations(session, parsed_message.candidate_locations)
     if parsed_message.event_type is None:
@@ -367,6 +474,10 @@ def _active_event_clause(now: datetime):
             Event.event_type == EventType.helicopter_movement.value,
             Event.event_time >= now - EVENT_ACTIVE_WINDOWS[EventType.helicopter_movement.value],
         ),
+        and_(
+            Event.event_type == EventType.ground_incursion.value,
+            Event.event_time >= now - EVENT_ACTIVE_WINDOWS[EventType.ground_incursion.value],
+        ),
     )
 
 
@@ -381,16 +492,6 @@ def list_events(
     offset: int = 0,
     active_only: bool = True,
 ) -> tuple[int, list[Event]]:
-    base_ids = _apply_event_filters(
-        select(Event.id),
-        event_type=event_type,
-        from_date=from_date,
-        to_date=to_date,
-        location_mode=location_mode,
-        active_only=active_only,
-    )
-    total = session.scalar(select(func.count()).select_from(base_ids.subquery())) or 0
-
     stmt = _apply_event_filters(
         select(Event)
         .options(selectinload(Event.location), selectinload(Event.region))
@@ -400,10 +501,11 @@ def list_events(
         to_date=to_date,
         location_mode=location_mode,
         active_only=active_only,
-    ).offset(offset).limit(limit)
+    )
 
-    items = session.scalars(stmt).all()
-    return total, items
+    items = _dedupe_feed_events(session.scalars(stmt).all())
+    total = len(items)
+    return total, items[offset : offset + limit]
 
 
 def get_map_events(
@@ -417,7 +519,7 @@ def get_map_events(
     points_stmt = _apply_event_filters(
         select(Event)
         .options(selectinload(Event.location))
-        .where(Event.location_mode == LocationMode.exact.value)
+        .where(Event.location_mode.in_([LocationMode.exact.value, LocationMode.inferred.value]))
         .order_by(Event.event_time.desc()),
         event_type=event_type,
         from_date=from_date,
@@ -457,6 +559,27 @@ def _dedupe_map_events(events: list[Event]) -> list[Event]:
     return unique_events
 
 
+def _dedupe_feed_events(events: list[Event]) -> list[Event]:
+    unique_events: list[Event] = []
+    seen_keys: set[tuple[str, str | None, str | None, str, str | None, str]] = set()
+
+    for event in events:
+        dedupe_key = (
+            event.event_type,
+            event.location_id,
+            event.region_id,
+            _ensure_aware_datetime(event.event_time).isoformat(),
+            event.location_name_raw,
+            (event.source_text or "").strip(),
+        )
+        if dedupe_key in seen_keys:
+            continue
+        seen_keys.add(dedupe_key)
+        unique_events.append(event)
+
+    return unique_events
+
+
 def get_stats(session: Session) -> dict[str, int]:
     cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
     active_clause = _active_event_clause(datetime.now(timezone.utc))
@@ -484,4 +607,40 @@ def get_stats(session: Session) -> dict[str, int]:
             Event.event_time >= cutoff,
             Event.event_type == EventType.helicopter_movement.value,
         ),
+    }
+
+
+def get_stats_for_filters(
+    session: Session,
+    *,
+    event_type: EventType | None = None,
+    from_date: datetime | None = None,
+    to_date: datetime | None = None,
+    location_mode: LocationMode | None = None,
+    active_only: bool = True,
+) -> dict[str, int]:
+    stmt = _apply_event_filters(
+        select(Event),
+        event_type=event_type,
+        from_date=from_date,
+        to_date=to_date,
+        location_mode=location_mode,
+        active_only=active_only,
+    )
+    subquery = stmt.subquery()
+
+    def count(*filters) -> int:
+        return session.scalar(select(func.count()).select_from(subquery).where(*filters)) or 0
+
+    return {
+        "total_events": count(),
+        "drone_count": count(subquery.c.event_type == EventType.drone_movement.value),
+        "fighter_count": count(subquery.c.event_type == EventType.fighter_jet_movement.value),
+        "helicopter_count": count(subquery.c.event_type == EventType.helicopter_movement.value),
+        "exact_count": count(subquery.c.location_mode == LocationMode.exact.value),
+        "regional_count": count(subquery.c.location_mode == LocationMode.regional.value),
+        "last_24h_total": count(),
+        "last_24h_drone_count": count(subquery.c.event_type == EventType.drone_movement.value),
+        "last_24h_fighter_count": count(subquery.c.event_type == EventType.fighter_jet_movement.value),
+        "last_24h_helicopter_count": count(subquery.c.event_type == EventType.helicopter_movement.value),
     }

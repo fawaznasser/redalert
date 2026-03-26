@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 from contextlib import suppress
+from dataclasses import dataclass
 
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
@@ -15,6 +16,12 @@ from app.models.raw_message import RawMessage
 from app.services.event_service import ingest_message
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class ChannelContext:
+    entity: object
+    channel_name: str
 
 
 def _build_session(session_value: str):
@@ -29,8 +36,8 @@ class TelegramListener:
     def __init__(self) -> None:
         self.client: TelegramClient | None = None
         self._runner_task: asyncio.Task | None = None
-        self._sync_task: asyncio.Task | None = None
-        self._last_seen_message_id: int = 0
+        self._sync_tasks: list[asyncio.Task] = []
+        self._last_seen_message_ids: dict[str, int] = {}
 
     async def start(self) -> None:
         if not settings.telegram_is_configured:
@@ -56,85 +63,118 @@ class TelegramListener:
         assert settings.telegram_session is not None
         assert settings.telegram_api_id is not None
         assert settings.telegram_api_hash is not None
-        assert settings.telegram_channel is not None
+        assert settings.telegram_channels
 
         session = _build_session(settings.telegram_session)
         client = TelegramClient(session, settings.telegram_api_id, settings.telegram_api_hash)
         self.client = client
         await client.start()
-        channel = await client.get_entity(settings.telegram_channel)
-        channel_name = getattr(channel, "title", None) or settings.telegram_channel or "telegram"
-        self._last_seen_message_id = await asyncio.to_thread(self._load_last_seen_message_id, channel_name)
+        channel_contexts = await self._resolve_channels(client)
+        channel_lookup = {getattr(context.entity, "id", None): context for context in channel_contexts}
 
-        await self._sync_recent_messages(client, channel, channel_name)
-        self._sync_task = asyncio.create_task(self._poll_recent_messages(client, channel, channel_name))
+        for context in channel_contexts:
+            self._last_seen_message_ids[context.channel_name] = await asyncio.to_thread(
+                self._load_last_seen_message_id,
+                context.channel_name,
+            )
+            await self._sync_recent_messages(client, context)
+            self._sync_tasks.append(asyncio.create_task(self._poll_recent_messages(client, context)))
 
         async def persist_event_message(message) -> None:  # type: ignore[no-untyped-def]
+            channel_context = channel_lookup.get(getattr(message, "chat_id", None))
+            if channel_context is None:
+                return
             payload = json.loads(message.to_json())
             await asyncio.to_thread(
                 self._persist_message,
                 telegram_message_id=message.id,
-                channel_name=channel_name,
+                channel_name=channel_context.channel_name,
                 message_text=message.message or getattr(message, "raw_text", "") or "",
                 message_date=message.edit_date or message.date,
                 raw_payload=payload,
             )
-            self._record_seen_message_id(message.id)
+            self._record_seen_message_id(channel_context.channel_name, message.id)
 
-        @client.on(events.NewMessage(chats=channel))
+        @client.on(events.NewMessage(chats=[context.entity for context in channel_contexts]))
         async def handle_new_message(event) -> None:  # type: ignore[no-untyped-def]
             await persist_event_message(event.message)
 
-        @client.on(events.MessageEdited(chats=channel))
+        @client.on(events.MessageEdited(chats=[context.entity for context in channel_contexts]))
         async def handle_message_edit(event) -> None:  # type: ignore[no-untyped-def]
             await persist_event_message(event.message)
 
-        logger.info("Telegram listener started for channel %s", settings.telegram_channel)
+        logger.info("Telegram listener started for channels %s", ", ".join(context.channel_name for context in channel_contexts))
         try:
             await client.run_until_disconnected()
         finally:
-            if self._sync_task is not None:
-                self._sync_task.cancel()
+            for task in self._sync_tasks:
+                task.cancel()
+            for task in self._sync_tasks:
                 with suppress(asyncio.CancelledError):
-                    await self._sync_task
-                self._sync_task = None
+                    await task
+            self._sync_tasks.clear()
             await client.disconnect()
             if self.client is client:
                 self.client = None
 
-    async def _sync_recent_messages(self, client: TelegramClient, channel, channel_name: str) -> None:  # type: ignore[no-untyped-def]
+    async def _resolve_channels(self, client: TelegramClient) -> list[ChannelContext]:
+        contexts: list[ChannelContext] = []
+        for configured_channel in settings.telegram_channels:
+            entity = await client.get_entity(configured_channel)
+            contexts.append(
+                ChannelContext(
+                    entity=entity,
+                    channel_name=self._normalize_channel_name(configured_channel),
+                )
+            )
+        return contexts
+
+    def _normalize_channel_name(self, value: str) -> str:
+        channel = value.strip()
+        for prefix in ("https://t.me/", "http://t.me/", "t.me/"):
+            if channel.startswith(prefix):
+                channel = channel[len(prefix):]
+                break
+        return channel.removeprefix("@")
+
+    async def _sync_recent_messages(self, client: TelegramClient, channel_context: ChannelContext) -> None:  # type: ignore[no-untyped-def]
         if settings.telegram_history_backfill_limit <= 0 and settings.telegram_edit_sync_limit <= 0:
             return
 
-        recent_messages = [message async for message in client.iter_messages(channel, limit=settings.telegram_history_backfill_limit)]
-        await self._ingest_messages(channel_name, recent_messages)
+        recent_messages = [
+            message async for message in client.iter_messages(channel_context.entity, limit=settings.telegram_history_backfill_limit)
+        ]
+        await self._ingest_messages(channel_context.channel_name, recent_messages)
 
-    async def _poll_recent_messages(self, client: TelegramClient, channel, channel_name: str) -> None:  # type: ignore[no-untyped-def]
+    async def _poll_recent_messages(self, client: TelegramClient, channel_context: ChannelContext) -> None:  # type: ignore[no-untyped-def]
         while True:
             await asyncio.sleep(max(1, settings.telegram_poll_interval_seconds))
-            await self._sync_new_messages(client, channel, channel_name)
-            await self._sync_recent_edits(client, channel, channel_name)
+            await self._sync_new_messages(client, channel_context)
+            await self._sync_recent_edits(client, channel_context)
 
-    async def _sync_new_messages(self, client: TelegramClient, channel, channel_name: str) -> None:  # type: ignore[no-untyped-def]
-        if self._last_seen_message_id <= 0:
+    async def _sync_new_messages(self, client: TelegramClient, channel_context: ChannelContext) -> None:  # type: ignore[no-untyped-def]
+        last_seen_message_id = self._last_seen_message_ids.get(channel_context.channel_name, 0)
+        if last_seen_message_id <= 0:
             return
 
         new_messages = [
             message
             async for message in client.iter_messages(
-                channel,
-                min_id=self._last_seen_message_id,
+                channel_context.entity,
+                min_id=last_seen_message_id,
                 limit=settings.telegram_history_backfill_limit,
             )
         ]
-        await self._ingest_messages(channel_name, new_messages)
+        await self._ingest_messages(channel_context.channel_name, new_messages)
 
-    async def _sync_recent_edits(self, client: TelegramClient, channel, channel_name: str) -> None:  # type: ignore[no-untyped-def]
+    async def _sync_recent_edits(self, client: TelegramClient, channel_context: ChannelContext) -> None:  # type: ignore[no-untyped-def]
         if settings.telegram_edit_sync_limit <= 0:
             return
 
-        recent_messages = [message async for message in client.iter_messages(channel, limit=settings.telegram_edit_sync_limit)]
-        await self._ingest_messages(channel_name, recent_messages)
+        recent_messages = [
+            message async for message in client.iter_messages(channel_context.entity, limit=settings.telegram_edit_sync_limit)
+        ]
+        await self._ingest_messages(channel_context.channel_name, recent_messages)
 
     async def _ingest_messages(self, channel_name: str, messages: list) -> None:  # type: ignore[no-untyped-def]
         for message in reversed(messages):
@@ -147,12 +187,12 @@ class TelegramListener:
                 message_date=message.edit_date or message.date,
                 raw_payload=payload,
             )
-            self._record_seen_message_id(message.id)
+            self._record_seen_message_id(channel_name, message.id)
 
-    def _record_seen_message_id(self, message_id: int | None) -> None:
+    def _record_seen_message_id(self, channel_name: str, message_id: int | None) -> None:
         if message_id is None:
             return
-        self._last_seen_message_id = max(self._last_seen_message_id, int(message_id))
+        self._last_seen_message_ids[channel_name] = max(self._last_seen_message_ids.get(channel_name, 0), int(message_id))
 
     def _load_last_seen_message_id(self, channel_name: str) -> int:
         session = SessionLocal()
@@ -196,11 +236,12 @@ class TelegramListener:
             session.close()
 
     async def stop(self) -> None:
-        if self._sync_task is not None:
-            self._sync_task.cancel()
+        for task in self._sync_tasks:
+            task.cancel()
+        for task in self._sync_tasks:
             with suppress(asyncio.CancelledError):
-                await self._sync_task
-            self._sync_task = None
+                await task
+        self._sync_tasks.clear()
 
         if self.client is not None:
             with suppress(Exception):

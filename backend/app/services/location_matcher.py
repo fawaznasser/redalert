@@ -37,8 +37,36 @@ PREFERRED_GOVERNORATE_MARKERS = (
 )
 
 CHANNEL_LOCATION_ALIASES = {
+    "\u0627\u0644\u063a\u0646\u062f\u0648\u0631\u064a\u0629": ("\u063a\u0646\u062f\u0648\u0631\u064a\u0629",),
     "\u0645\u0641\u062f\u0648\u0646": ("\u0645\u064a\u0641\u062f\u0648\u0646",),
     "\u062a\u0648\u0644": ("\u0645\u0632\u0631\u0639\u0629 \u062a\u0648\u0644",),
+    "\u0645\u0627\u0631\u0648\u0646 \u0627\u0644\u0631\u0627\u0633": ("\u0645\u0627\u0631\u0648\u0646 \u0627\u0644\u0631\u0623\u0633",),
+    "\u0643\u0641\u0631\u0634\u0648\u0628\u0627": ("\u0643\u0641\u0631 \u0634\u0648\u0628\u0627",),
+    "\u0643\u0641\u0631\u0643\u0644\u0627": ("\u0643\u0641\u0631 \u0643\u0644\u0627",),
+    "\u0643\u0641\u0631\u062a\u0628\u0646\u064a\u062a": ("\u0643\u0641\u0631 \u062a\u0628\u0646\u064a\u062a",),
+    "\u064a\u062d\u0631": ("\u064a\u062d\u0645\u0631 \u0627\u0644\u0634\u0642\u064a\u0641",),
+    "\u0631\u0628 \u062b\u0644\u0627\u062b\u064a\u0646": ("\u0631\u0628 \u0627\u0644\u062a\u0644\u0627\u062a\u064a\u0646",),
+    "\u0639\u064a\u0646\u0627\u062b\u0627": ("\u0639\u064a\u0646\u0627\u062a\u0627",),
+    "\u0639\u0631\u0628 \u0635\u0627\u0644\u064a\u0645": ("\u0639\u0631\u0628 \u0635\u0644\u064a\u0645",),
+    "\u0639\u0644\u0645\u0627\u0646 \u0645\u0631\u062c\u0639\u064a\u0648\u0646": ("\u0645\u0631\u062c\u0639\u064a\u0648\u0646",),
+    "\u0637\u064a\u0628\u0629": ("\u0627\u0644\u0637\u064a\u0628\u0629",),
+    "\u0642\u0644\u0648\u064a\u0647": ("\u0642\u0644\u0648\u064a\u0629",),
+}
+
+CHANNEL_LOCATION_PREFERRED_GOVERNORATE = {
+    "\u0627\u0644\u0637\u064a\u0628\u0629": ("nabat", "\u0627\u0644\u0646\u0628\u0637\u064a\u0629"),
+    "\u0637\u064a\u0628\u0629": ("nabat", "\u0627\u0644\u0646\u0628\u0637\u064a\u0629"),
+}
+
+LOCATION_PART_SUFFIXES = {
+    "\u0627\u0644\u0639\u064a\u0646",
+    "\u0639\u064a\u0646",
+    "\u0627\u0644\u0641\u0648\u0642\u0627",
+    "\u0641\u0648\u0642\u0627",
+    "\u0627\u0644\u062a\u062d\u062a\u0627",
+    "\u062a\u062d\u062a\u0627",
+    "\u0627\u0644\u062d\u0648\u0634",
+    "\u0627\u0644\u062d\u0627\u0631\u0629",
 }
 
 
@@ -75,18 +103,36 @@ def _governorate_priority(location: Location) -> int:
     return 1 if any(marker in governorate for marker in PREFERRED_GOVERNORATE_MARKERS) else 0
 
 
-def _candidate_lookup_keys(candidate: str) -> list[str]:
+def _candidate_lookup_keys(candidate: str, seen_variants: set[str] | None = None) -> list[str]:
     normalized = normalize_hashtag(candidate)
     if not normalized:
         return []
+    if seen_variants is None:
+        seen_variants = set()
+    if normalized in seen_variants:
+        return []
+    seen_variants.add(normalized)
 
-    keys = [normalized]
-    if normalized.startswith("\u0627\u0644") and len(normalized) > 2:
-        keys.append(normalized.removeprefix("\u0627\u0644").strip())
-    elif not normalized.startswith("\u0627\u0644"):
-        keys.append(f"\u0627\u0644{normalized}")
-    for alias in CHANNEL_LOCATION_ALIASES.get(normalized, ()):
-        keys.extend(_candidate_lookup_keys(alias))
+    variants: list[str] = [normalized]
+    words = normalized.split()
+    if len(words) >= 3 and words[-1] in LOCATION_PART_SUFFIXES:
+        variants.append(" ".join(words[:-1]))
+    if len(words) >= 3:
+        variants.append(" ".join(words[:-1]))
+
+    keys: list[str] = []
+    for variant in variants:
+        if not variant:
+            continue
+        keys.append(variant)
+        if variant.startswith("\u0627\u0644") and len(variant) > 2:
+            keys.append(variant.removeprefix("\u0627\u0644").strip())
+        elif not variant.startswith("\u0627\u0644"):
+            keys.append(f"\u0627\u0644{variant}")
+
+        for alias in CHANNEL_LOCATION_ALIASES.get(variant, ()):
+            keys.extend(_candidate_lookup_keys(alias, seen_variants))
+
     return list(dict.fromkeys(key for key in keys if key))
 
 
@@ -121,6 +167,27 @@ def _resolve_alias(candidates: list[AliasCandidate]) -> Location | None:
     return None
 
 
+def _resolve_alias_for_candidate(candidate_name: str, candidates: list[AliasCandidate]) -> Location | None:
+    location = _resolve_alias(candidates)
+    if location is not None:
+        return location
+
+    normalized_candidate = normalize_hashtag(candidate_name)
+    preferred_markers = CHANNEL_LOCATION_PREFERRED_GOVERNORATE.get(normalized_candidate)
+    if not preferred_markers:
+        return None
+
+    preferred_locations = {
+        candidate.location.id: candidate.location
+        for candidate in candidates
+        if any(marker in normalize_hashtag(candidate.location.governorate or "").lower() for marker in preferred_markers)
+    }
+    if len(preferred_locations) == 1:
+        return next(iter(preferred_locations.values()))
+
+    return None
+
+
 def match_locations(session: Session, candidate_locations: list[str]) -> LocationMatchResult:
     alias_map = _build_alias_map(session)
     matches: list[MatchedLocation] = []
@@ -131,7 +198,7 @@ def match_locations(session: Session, candidate_locations: list[str]) -> Locatio
         alias_candidates: list[AliasCandidate] = []
         for key in _candidate_lookup_keys(candidate):
             alias_candidates.extend(alias_map.get(key, []))
-        location = _resolve_alias(alias_candidates)
+        location = _resolve_alias_for_candidate(candidate, alias_candidates)
         if location is None:
             unmatched.append(candidate)
             continue

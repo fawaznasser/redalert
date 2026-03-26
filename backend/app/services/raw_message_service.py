@@ -37,7 +37,8 @@ def list_recent_raw_messages(session: Session, *, limit: int = 10) -> tuple[int,
     stmt = (
         select(RawMessage)
         .options(selectinload(RawMessage.events))
-        .order_by(RawMessage.ingested_at.desc())
+        .where(func.length(func.trim(RawMessage.message_text)) > 0)
+        .order_by(RawMessage.message_date.desc(), RawMessage.ingested_at.desc())
         .limit(limit)
     )
     rows = session.scalars(stmt).all()

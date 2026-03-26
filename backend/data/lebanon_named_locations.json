@@ -13828,21 +13828,6 @@
     "longitude": 36.42861
   },
   {
-    "geoname_id": 6279484,
-    "source": "geonames",
-    "feature_class": "P",
-    "feature_code": "PPL",
-    "name_ar": "Hokr Etti",
-    "name_en": "Hokr Etti",
-    "alt_names": [
-      "Hokr Etti"
-    ],
-    "district": null,
-    "governorate": "Aakkâr",
-    "latitude": 34.57417,
-    "longitude": 36.09944
-  },
-  {
     "geoname_id": 273873,
     "source": "geonames",
     "feature_class": "P",
@@ -48250,6 +48235,22 @@
     "governorate": "Mont-Liban",
     "latitude": 34.09731,
     "longitude": 35.69961
+  },
+  {
+    "geoname_id": 6279484,
+    "source": "geonames",
+    "feature_class": "P",
+    "feature_code": "PPL",
+    "name_ar": "حكر إطي",
+    "name_en": "Hokr Etti",
+    "alt_names": [
+      "Hokr Etti",
+      "hkr aty"
+    ],
+    "district": null,
+    "governorate": "Aakkâr",
+    "latitude": 34.57417,
+    "longitude": 36.09944
   },
   {
     "geoname_id": 274723,

@@ -5,15 +5,28 @@ import type {
   Timeframe,
 } from "@/types";
 
+function normalizeBasePath(value: string | undefined): string {
+  const raw = (value ?? "").trim();
+  if (!raw || raw === "/") {
+    return "";
+  }
+  return raw.startsWith("/") ? raw.replace(/\/+$/, "") : `/${raw.replace(/\/+$/, "")}`;
+}
+
+const SITE_BASE_PATH = normalizeBasePath(process.env.NEXT_PUBLIC_SITE_BASE_PATH);
+
 function defaultApiBaseUrl(): string {
   if (typeof window !== "undefined") {
-    const { protocol, hostname } = window.location;
+    const { origin, protocol, hostname } = window.location;
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return `${protocol}//${hostname}:8000`;
+      return `${protocol}//${hostname}:8090`;
     }
-    return "https://redalertt.onrender.com";
+    if (SITE_BASE_PATH) {
+      return `${origin}${SITE_BASE_PATH}/api`;
+    }
+    return `${origin}/api`;
   }
-  return "https://redalertt.onrender.com";
+  return SITE_BASE_PATH ? `${SITE_BASE_PATH}/api` : "https://redalertt.onrender.com";
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? defaultApiBaseUrl();

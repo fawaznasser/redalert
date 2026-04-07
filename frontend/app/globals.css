@@ -54,6 +54,8 @@ body {
   height: 100%;
   width: 100%;
   font-family: var(--font-sans);
+  background: #eef3fa;
+  transform: translate3d(0, 0, 0);
 }
 
 .leaflet-popup-content-wrapper,
@@ -69,18 +71,172 @@ body {
   margin: 12px 14px;
 }
 
+.leaflet-popup-pane {
+  z-index: 980 !important;
+}
+
+.top-description-popup {
+  z-index: 990 !important;
+}
+
+.top-description-popup .leaflet-popup-content-wrapper,
+.top-description-popup .leaflet-popup-tip {
+  position: relative;
+  z-index: 991 !important;
+}
+
 .leaflet-control-attribution {
-  background: rgba(255, 255, 255, 0.96) !important;
-  color: var(--text-soft) !important;
+  display: none !important;
 }
 
 .leaflet-control-attribution a {
   color: var(--border-accent) !important;
 }
 
+.leaflet-tile-container,
+.leaflet-zoom-animated,
+.leaflet-marker-pane,
+.leaflet-overlay-pane {
+  will-change: transform;
+}
+
 .leaflet-div-icon {
   background: transparent;
   border: 0;
+}
+
+.attack-marker-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.attack-marker {
+  width: var(--attack-marker-size, 32px);
+  height: var(--attack-marker-size, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 10px 18px rgba(25, 39, 76, 0.26));
+}
+
+.attack-marker__glyph {
+  font-size: calc(var(--attack-marker-size, 32px) * 0.8);
+  line-height: 1;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--attack-marker-size, 32px);
+  height: var(--attack-marker-size, 32px);
+}
+
+.attack-marker__glyph svg {
+  width: calc(var(--attack-marker-size, 32px) * 0.92);
+  height: calc(var(--attack-marker-size, 32px) * 0.92);
+  overflow: visible;
+}
+
+.projectile-marker-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.projectile-marker {
+  width: var(--projectile-marker-size, 24px);
+  height: var(--projectile-marker-size, 24px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 8px 16px rgba(17, 31, 58, 0.24));
+}
+
+.projectile-marker__glyph {
+  font-size: calc(var(--projectile-marker-size, 24px) * 0.78);
+  line-height: 1;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--projectile-marker-size, 24px);
+  height: var(--projectile-marker-size, 24px);
+}
+
+.projectile-marker__glyph svg {
+  width: calc(var(--projectile-marker-size, 24px) * 0.94);
+  height: calc(var(--projectile-marker-size, 24px) * 0.94);
+  overflow: visible;
+}
+
+.attack-marker--enemy {
+  color: #4f8dff;
+}
+
+.attack-marker--enemy .attack-marker__glyph {
+  color: #174bb8;
+}
+
+.attack-marker--resistance {
+  color: #ffe44d;
+}
+
+.attack-marker--resistance .attack-marker__glyph {
+  color: #a57d00;
+}
+
+.projectile-marker--enemy {
+  color: #174bb8;
+}
+
+.projectile-marker--resistance {
+  color: #a57d00;
+}
+
+.incursion-marker-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.incursion-marker {
+  width: var(--incursion-marker-size, 28px);
+  height: var(--incursion-marker-size, 28px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 10px 18px rgba(17, 79, 48, 0.24));
+}
+
+.incursion-marker__glyph {
+  font-size: calc(var(--incursion-marker-size, 28px) * 0.8);
+  line-height: 1;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--incursion-marker-size, 28px);
+  height: var(--incursion-marker-size, 28px);
+}
+
+.incursion-marker--default .incursion-marker__glyph {
+  color: #29a46b;
+}
+
+.incursion-marker--enemy .incursion-marker__glyph {
+  color: #174bb8;
+}
+
+.legend-weapon-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 1.5rem;
+}
+
+.legend-weapon-icon svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  overflow: visible;
 }
 
 .official-panel {

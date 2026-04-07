@@ -1,4 +1,5 @@
 export type EventType = "drone_movement" | "fighter_jet_movement" | "helicopter_movement" | "ground_incursion";
+export type AttackSide = "enemy_attack" | "resistance_attack";
 export type LocationMode = "exact" | "inferred" | "regional";
 export type Timeframe = "24h" | "7d" | "30d" | "all";
 
@@ -15,6 +16,7 @@ export interface EventRead {
   region_name: string | null;
   event_time: string;
   source_text: string;
+  attack_side: AttackSide | null;
   latitude: number | null;
   longitude: number | null;
 }
@@ -33,8 +35,11 @@ export interface MapPoint {
   latitude: number;
   longitude: number;
   location_name: string | null;
+  region_slug?: string | null;
+  region_name?: string | null;
   event_time: string;
   source_text: string;
+  attack_side: AttackSide | null;
 }
 
 export interface RegionalEvent {
@@ -44,6 +49,7 @@ export interface RegionalEvent {
   region_name: string;
   event_time: string;
   source_text: string;
+  attack_side: AttackSide | null;
 }
 
 export interface MapEventsResponse {
@@ -90,6 +96,7 @@ export interface RawMessageRead {
   message_date: string;
   ingested_at: string;
   parsed_event_type: EventType | null;
+  attack_side: AttackSide | null;
   event_types: EventType[];
   candidate_locations: string[];
   matched_locations: string[];

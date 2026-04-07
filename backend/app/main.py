@@ -31,9 +31,11 @@ telegram_listener = TelegramListener()
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     live_updates.bind_loop(asyncio.get_running_loop())
-    await telegram_listener.start()
+    if settings.start_telegram_listener_in_api:
+        await telegram_listener.start()
     yield
-    await telegram_listener.stop()
+    if settings.start_telegram_listener_in_api:
+        await telegram_listener.stop()
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)

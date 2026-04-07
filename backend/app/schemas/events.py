@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.schemas.common import ApiModel, EventType, LocationMode
+from app.schemas.common import ApiModel, AttackSide, EventType, LocationMode
 
 
 class EventRead(ApiModel):
@@ -22,6 +22,7 @@ class EventRead(ApiModel):
     region_name: str | None = None
     event_time: datetime
     source_text: str
+    attack_side: AttackSide | None = None
     latitude: float | None = None
     longitude: float | None = None
 
@@ -42,6 +43,7 @@ class MapPoint(ApiModel):
     location_name: str | None = None
     event_time: datetime
     source_text: str
+    attack_side: AttackSide | None = None
 
 
 class RegionalEventRead(ApiModel):
@@ -51,6 +53,7 @@ class RegionalEventRead(ApiModel):
     region_name: str
     event_time: datetime
     source_text: str
+    attack_side: AttackSide | None = None
 
 
 class MapEventsResponse(ApiModel):

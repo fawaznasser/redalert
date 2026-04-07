@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from app.schemas.common import ApiModel, EventType
+from app.schemas.common import ApiModel, AttackSide, EventType
 
 
 class RawMessageRead(ApiModel):
@@ -13,6 +13,7 @@ class RawMessageRead(ApiModel):
     message_date: datetime
     ingested_at: datetime
     parsed_event_type: EventType | None = None
+    attack_side: AttackSide | None = None
     event_types: list[EventType]
     candidate_locations: list[str]
     matched_locations: list[str]

@@ -13,6 +13,11 @@ class EventType(str, Enum):
     ground_incursion = "ground_incursion"
 
 
+class AttackSide(str, Enum):
+    enemy_attack = "enemy_attack"
+    resistance_attack = "resistance_attack"
+
+
 class LocationMode(str, Enum):
     exact = "exact"
     inferred = "inferred"

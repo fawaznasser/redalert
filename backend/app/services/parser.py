@@ -66,11 +66,23 @@ EVENT_TAGS = {
 }
 
 EVENT_TEXT_KEYWORDS = [
+    ("\u0647\u062c\u0648\u0645 \u0628\u0637\u0627\u0626\u0631\u0627\u062a \u0645\u0633\u064a\u0631\u0629", EventType.drone_movement),
+    ("\u0637\u0627\u0626\u0631\u0627\u062a \u0645\u0633\u064a\u0631\u0629", EventType.drone_movement),
     ("\u0637\u0627\u0626\u0631\u0629 \u0645\u0633\u064a\u0631\u0629", EventType.drone_movement),
     ("\u0645\u0633\u064a\u0631\u0627\u062a", EventType.drone_movement),
     ("\u0645\u0633\u064a\u0631\u0629", EventType.drone_movement),
     ("\u0645\u0633\u064a\u0631", EventType.drone_movement),
     ("\u062f\u0631\u0648\u0646", EventType.drone_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u0639\u0645\u0644\u064a\u0629 \u0645\u0642\u0627\u0648\u0645\u0629", EventType.ground_incursion),
+    ("\u0639\u0645\u0644\u064a\u0629 \u0645\u0642\u0627\u0648\u0645\u0629", EventType.ground_incursion),
+    ("\u062a\u0645 \u0631\u0635\u062f \u063a\u0627\u0631\u0629 \u062c\u0648\u064a\u0629", EventType.fighter_jet_movement),
+    ("\u063a\u0627\u0631\u0629 \u062c\u0648\u064a\u0629", EventType.fighter_jet_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u0642\u0635\u0641 \u0645\u062f\u0641\u0639\u064a", EventType.fighter_jet_movement),
+    ("\u0642\u0635\u0641 \u0645\u062f\u0641\u0639\u064a", EventType.fighter_jet_movement),
+    ("\u0647\u062c\u0648\u0645 \u0628\u0635\u0627\u0631\u0648\u062e \u0645\u0636\u0627\u062f \u0644\u0644\u062f\u0631\u0648\u0639", EventType.fighter_jet_movement),
+    ("\u0635\u0627\u0631\u0648\u062e \u0645\u0636\u0627\u062f \u0644\u0644\u062f\u0631\u0648\u0639", EventType.fighter_jet_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u0642\u0635\u0641", EventType.fighter_jet_movement),
+    ("\u0642\u0635\u0641", EventType.fighter_jet_movement),
     ("\u062d\u0631\u0628\u064a \u0628\u0627\u062a\u062c\u0627\u0647", EventType.fighter_jet_movement),
     ("\u062d\u0631\u0628\u064a", EventType.fighter_jet_movement),
     ("\u0645\u0642\u0627\u062a\u0644\u0627\u062a \u062d\u0631\u0628\u064a\u0629", EventType.fighter_jet_movement),
@@ -112,8 +124,10 @@ NON_LOCATION_TAGS = {
     "\u0625\u0646\u0630\u0627\u0631",
     "\u062a\u062d\u0630\u064a\u0631 \u0639\u0627\u062c\u0644",
     "\u0645\u0633\u062a\u0645\u0631",
+    "\u0627\u0644\u062c\u0648\u0627\u0631",
     "\u0648\u0627\u0644\u062c\u0648\u0627\u0631",
     "\u0648 \u0627\u0644\u062c\u0648\u0627\u0631",
+    "\u0641\u064a \u0627\u0644\u062c\u0648\u0627\u0631",
     "\u0627\u062a\u062c\u0627\u0647",
     "\u0627\u062a\u062c\u0627\u0647 \u0644\u0628\u0646\u0627\u0646",
     "\u0641\u0648\u0642 \u0627\u0644\u0645\u0646\u0627\u0637\u0642 \u0627\u0644\u062a\u0627\u0644\u064a\u0629",
@@ -122,11 +136,13 @@ NON_LOCATION_TAGS = {
     "\u0631\u062c\u0627\u0621 \u0627\u0644\u062d\u0630\u0631",
     "\u062c\u0646\u0648\u0628 \u0644\u0628\u0646\u0627\u0646",
     "\u062a\u062d\u062f\u064a\u062b",
+    "\u062a\u0645 \u0631\u0635\u062f \u0627\u0634\u062a\u0628\u0627\u0643\u0627\u062a",
 }
 
 NON_LOCATION_SUBSTRINGS = (
     "\u062d\u064a\u0637\u0629 \u0648\u062d\u0630\u0631",
     "\u062e\u0628\u0631 \u0639\u0627\u062c\u0644",
+    "\u0627\u0644\u062c\u0648\u0627\u0631",
     "\u0648\u0627\u0644\u062c\u0648\u0627\u0631",
     "\u0627\u0644\u0645\u0646\u0627\u0637\u0642 \u0627\u0644\u062a\u0627\u0644\u064a\u0629",
     "\u0645\u0631\u0627\u0633\u0644 \u0627\u0644\u0645\u0646\u0627\u0631",
@@ -136,6 +152,13 @@ NON_LOCATION_PREFIXES = (
     "\u0627\u062a\u062c\u0627\u0647 ",
     "\u0641\u0648\u0642 ",
     "\u0645\u0631\u0627\u0633\u0644 ",
+)
+
+LOCATION_LEADING_LABELS = (
+    "\u0627\u0644\u0645\u0646\u0627\u0637\u0642 \u0627\u0644\u0645\u062a\u0627\u062b\u0631\u0629",
+    "\u0627\u0644\u0645\u0646\u0627\u0637\u0642 \u0627\u0644\u0645\u062a\u0623\u062b\u0631\u0629",
+    "\u0627\u0644\u0645\u0646\u0637\u0642\u0629 \u0627\u0644\u0645\u062a\u0627\u062b\u0631\u0629",
+    "\u0627\u0644\u0645\u0646\u0637\u0642\u0629 \u0627\u0644\u0645\u062a\u0623\u062b\u0631\u0629",
 )
 
 LOCATION_TRAILING_STOP_WORDS = {
@@ -152,6 +175,7 @@ LOCATION_TRAILING_STOP_WORDS = {
     "\u0645\u0646",
     "\u0641\u064a",
     "\u062f\u0627\u062e\u0644",
+    "\u0645\u0639",
 }
 
 LOCATION_TRAILING_STOP_PREFIXES = (
@@ -198,6 +222,37 @@ class ParsedTelegramMessage:
     candidate_locations: list[str]
     is_continuation: bool
     spatial_hint: SpatialHint | None = None
+
+
+RNN_EVENT_TEXT_KEYWORDS = [
+    ("\u062a\u0645 \u0631\u0635\u062f \u062a\u062d\u0644\u064a\u0642 \u0637\u0627\u0626\u0631\u0629 \u0645\u0633\u064a\u0631\u0629", EventType.drone_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u062a\u062d\u0644\u064a\u0642 \u0645\u0633\u064a\u0651\u0631\u0629", EventType.drone_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u062a\u062d\u0644\u064a\u0642 \u0645\u0633\u064a\u0631\u0629", EventType.drone_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u062a\u062d\u0644\u064a\u0642 \u0645\u0633\u064a\u0631", EventType.drone_movement),
+    ("\u062a\u062d\u0644\u064a\u0642 \u0637\u0627\u0626\u0631\u0629 \u0645\u0633\u064a\u0631\u0629", EventType.drone_movement),
+    ("\u062a\u062d\u0644\u064a\u0642 \u0645\u0633\u064a\u0651\u0631\u0629", EventType.drone_movement),
+    ("\u062a\u062d\u0644\u064a\u0642 \u0645\u0633\u064a\u0631\u0629", EventType.drone_movement),
+    ("\u062a\u062d\u0644\u064a\u0642 \u0645\u0633\u064a\u0631", EventType.drone_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u0636\u0631\u0628\u0629 \u0628\u0637\u0627\u0626\u0631\u0629 \u0645\u0633\u064a\u0651\u0631\u0629", EventType.drone_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u0647\u062c\u0648\u0645 \u0628\u0637\u0627\u0626\u0631\u0627\u062a \u0645\u0633\u064a\u0651\u0631\u0629", EventType.drone_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u0647\u062c\u0648\u0645 \u0628\u0637\u0627\u0626\u0631\u0627\u062a \u0645\u0633\u064a\u0631\u0629", EventType.drone_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u062a\u062d\u0644\u064a\u0642 \u0645\u0642\u0627\u062a\u0644\u0627\u062a \u062d\u0631\u0628\u064a\u0629", EventType.fighter_jet_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u062a\u062d\u0644\u064a\u0642 \u0645\u0642\u0627\u062a\u0644\u0627\u062a", EventType.fighter_jet_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u062a\u062d\u0644\u064a\u0642 \u062d\u0631\u0628\u064a", EventType.fighter_jet_movement),
+    ("\u062a\u062d\u0644\u064a\u0642 \u0645\u0642\u0627\u062a\u0644\u0627\u062a", EventType.fighter_jet_movement),
+    ("\u062a\u062d\u0644\u064a\u0642 \u062d\u0631\u0628\u064a", EventType.fighter_jet_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u062a\u062d\u0644\u064a\u0642 \u0645\u0631\u0648\u062d\u064a\u0629", EventType.helicopter_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u0645\u0631\u0648\u062d\u064a\u0629", EventType.helicopter_movement),
+    ("\u062a\u062d\u0644\u064a\u0642 \u0645\u0631\u0648\u062d\u064a\u0629", EventType.helicopter_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u062a\u0648\u063a\u0644 \u0628\u0631\u064a", EventType.ground_incursion),
+    ("\u062a\u0645 \u0631\u0635\u062f \u0627\u0634\u062a\u0628\u0627\u0643\u0627\u062a", EventType.ground_incursion),
+    ("\u062a\u0645 \u0631\u0635\u062f \u0639\u0645\u0644\u064a\u0629 \u0645\u0642\u0627\u0648\u0645\u0629", EventType.ground_incursion),
+    ("\u062a\u0645 \u0631\u0635\u062f \u063a\u0627\u0631\u0629 \u062c\u0648\u064a\u0629", EventType.fighter_jet_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u0642\u0635\u0641 \u0645\u062f\u0641\u0639\u064a", EventType.fighter_jet_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u0642\u0635\u0641", EventType.fighter_jet_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u0647\u062c\u0648\u0645 \u0628\u0635\u0627\u0631\u0648\u062e \u0645\u0636\u0627\u062f \u0644\u0644\u062f\u0631\u0648\u0639", EventType.fighter_jet_movement),
+    ("\u062a\u0645 \u0631\u0635\u062f \u062a\u062f\u0645\u064a\u0631", EventType.fighter_jet_movement),
+]
 
 
 def detect_event_from_tag(tag: str) -> tuple[EventType | None, str | None]:
@@ -258,6 +313,50 @@ def is_location_candidate(tag: str) -> bool:
     return True
 
 
+def trim_location_candidate(text: str) -> str:
+    normalized = normalize_text(text).lstrip("#")
+    normalized = PUNCTUATION_EDGE_PATTERN.sub("", normalized)
+    for label in LOCATION_LEADING_LABELS:
+        label_index = normalized.find(label)
+        if label_index != -1:
+            remainder = normalized[label_index + len(label) :].lstrip(" :\u061b\u060c-")
+            normalized = normalize_text(remainder)
+            normalized = PUNCTUATION_EDGE_PATTERN.sub("", normalized)
+            break
+
+    words = normalized.split()
+    trimmed_words: list[str] = []
+    for word in words:
+        if word in LOCATION_TRAILING_STOP_WORDS:
+            break
+        if any(word.startswith(prefix) for prefix in LOCATION_TRAILING_STOP_PREFIXES):
+            break
+        trimmed_words.append(word)
+    return " ".join(trimmed_words)
+
+
+def expand_location_candidate(text: str) -> list[str]:
+    candidate = trim_location_candidate(text).lstrip("#")
+    if not candidate:
+        return []
+
+    parts = [candidate]
+    if " و" in candidate:
+        split_parts = [normalize_text(part) for part in re.split(r"\s+و(?=[\u0600-\u06FF_])", candidate) if normalize_text(part)]
+        if len(split_parts) > 1:
+            parts = split_parts
+
+    expanded: list[str] = []
+    seen: set[str] = set()
+    for part in parts:
+        normalized = normalize_text(part)
+        if not normalized or normalized in seen:
+            continue
+        expanded.append(normalized)
+        seen.add(normalized)
+    return expanded
+
+
 def extract_hashtags(message_text: str | None) -> list[str]:
     if not message_text:
         return []
@@ -273,32 +372,28 @@ def extract_text_location_candidates(message_text: str | None) -> list[str]:
     candidates: list[str] = []
 
     for part in LOCATION_SPLIT_PATTERN.split(text_without_links):
-        normalized = normalize_text(part)
-        if not normalized:
-            continue
-        if is_non_location_text(normalized):
-            continue
-        if detect_event_from_tag(normalized)[0] is not None:
-            continue
-        if detect_event_from_text(normalized)[0] is not None:
-            continue
-        if len(normalized.split()) > 4:
-            continue
-        if not re.search(r"[\u0600-\u06FF]", normalized):
-            continue
-        candidates.append(normalized)
+        for normalized in expand_location_candidate(part):
+            if is_non_location_text(normalized):
+                continue
+            if detect_event_from_tag(normalized)[0] is not None:
+                continue
+            if detect_event_from_text(normalized)[0] is not None:
+                continue
+            if len(normalized.split()) > 4:
+                continue
+            if not re.search(r"[\u0600-\u06FF]", normalized):
+                continue
+            candidates.append(normalized)
 
     for match in CONTEXT_LOCATION_PATTERN.finditer(text_without_links):
-        normalized = normalize_text(match.group(1)).lstrip("#")
-        if not normalized:
-            continue
-        if is_non_location_text(normalized):
-            continue
-        if detect_event_from_tag(normalized)[0] is not None:
-            continue
-        if detect_event_from_text(normalized)[0] is not None:
-            continue
-        candidates.append(normalized)
+        for normalized in expand_location_candidate(match.group(1)):
+            if is_non_location_text(normalized):
+                continue
+            if detect_event_from_tag(normalized)[0] is not None:
+                continue
+            if detect_event_from_text(normalized)[0] is not None:
+                continue
+            candidates.append(normalized)
 
     return candidates
 
@@ -343,21 +438,10 @@ def extract_incursion_location_candidates(message_text: str | None) -> list[str]
     candidates: list[str] = []
     for pattern in INCURSION_LOCATION_PATTERNS:
         for match in pattern.finditer(normalized_text):
-            candidate = normalize_text(match.group(1)).lstrip("#")
-            words = candidate.split()
-            trimmed_words: list[str] = []
-            for word in words:
-                if word in LOCATION_TRAILING_STOP_WORDS:
-                    break
-                if any(word.startswith(prefix) for prefix in LOCATION_TRAILING_STOP_PREFIXES):
-                    break
-                trimmed_words.append(word)
-            candidate = " ".join(trimmed_words)
-            if not candidate:
-                continue
-            if is_non_location_text(candidate):
-                continue
-            candidates.append(candidate)
+            for candidate in expand_location_candidate(match.group(1)):
+                if is_non_location_text(candidate):
+                    continue
+                candidates.append(candidate)
     return candidates
 
 
@@ -376,10 +460,11 @@ def extract_spatial_hint(message_text: str | None) -> SpatialHint | None:
 
     above_match = ABOVE_PATTERN.search(normalized_text)
     if above_match:
-        anchor = normalize_text(above_match.group("anchor"))
+        anchor = trim_location_candidate(above_match.group("anchor"))
         label = normalize_text(above_match.group("label") or f"\u0641\u0648\u0642 {anchor}")
-        if anchor:
-            return SpatialHint(mode="above", label=label, anchor_candidates=[anchor])
+        anchors = expand_location_candidate(anchor)
+        if anchors:
+            return SpatialHint(mode="above", label=label, anchor_candidates=anchors)
 
     vicinity_match = VICINITY_PATTERN.search(normalized_text)
     if vicinity_match:
@@ -479,6 +564,54 @@ def parse_secondary_channel_incursion_message(message_text: str | None) -> Parse
         event_tag=keyword,
         hashtags=hashtags,
         candidate_locations=unique_candidates[:1] if unique_candidates else [],
+        is_continuation=False,
+        spatial_hint=extract_spatial_hint(message_text),
+    )
+
+
+def parse_rnn_channel_message(message_text: str | None) -> ParsedTelegramMessage | None:
+    normalized_text = normalize_text(message_text)
+    if not normalized_text:
+        return None
+
+    event_type: EventType | None = None
+    event_tag: str | None = None
+    for keyword, candidate_type in RNN_EVENT_TEXT_KEYWORDS:
+        if keyword in normalized_text:
+            event_type = candidate_type
+            event_tag = keyword
+            break
+
+    if event_type is None or event_tag is None:
+        return parse_message_text(message_text)
+
+    candidate_locations: list[str] = []
+    for candidate in extract_text_location_candidates(message_text):
+        if candidate not in candidate_locations:
+            candidate_locations.append(candidate)
+
+    if "تم رصد اشتباكات" in normalized_text and candidate_locations:
+        candidate_locations = candidate_locations[:1]
+
+    if event_type == EventType.ground_incursion and (
+        "\u062a\u0648\u063a\u0644" in normalized_text or "\u062a\u0633\u0644\u0644" in normalized_text
+    ):
+        prioritized_candidates = extract_incursion_location_candidates(message_text)
+        if prioritized_candidates:
+            candidate_locations = prioritized_candidates[:1]
+
+    unique_candidates: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidate_locations:
+        if candidate and candidate not in seen:
+            unique_candidates.append(candidate)
+            seen.add(candidate)
+
+    return ParsedTelegramMessage(
+        event_type=event_type,
+        event_tag=event_tag,
+        hashtags=[],
+        candidate_locations=unique_candidates,
         is_continuation=False,
         spatial_hint=extract_spatial_hint(message_text),
     )

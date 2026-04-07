@@ -26009,26 +26009,6 @@
     "longitude": 35.76306
   },
   {
-    "geoname_id": 279869,
-    "source": "geonames",
-    "feature_class": "P",
-    "feature_code": "PPL",
-    "name_ar": "الجوار",
-    "name_en": "Ej Jouar",
-    "alt_names": [
-      "Ej Jouar",
-      "Al Jiwar",
-      "Al Jiwār",
-      "Al Juwār",
-      "AlJuwar",
-      "aljwar"
-    ],
-    "district": null,
-    "governorate": "Mont-Liban",
-    "latitude": 33.92833,
-    "longitude": 35.73083
-  },
-  {
     "geoname_id": 6275251,
     "source": "geonames",
     "feature_class": "P",
@@ -54208,12 +54188,14 @@
   },
   {
     "geoname_id": 277121,
-    "source": "geonames",
+    "source": "manual",
     "feature_class": "P",
-    "feature_code": "PPL",
+    "feature_code": "PPLX",
     "name_ar": "زقاق البلاط",
-    "name_en": "Blat",
+    "name_en": "Zuqaq al-Blat",
     "alt_names": [
+      "زقاق البلاط",
+      "زقاق_البلاط",
       "بلاط",
       "Blât",
       "Blat",
@@ -54224,12 +54206,16 @@
       "Blâte",
       "El Blat",
       "blat",
-      "zqaq alblat"
+      "zqaq alblat",
+      "zuqaq al blat",
+      "zuqaq al-blat",
+      "zoqaq el blat",
+      "zuqaq al balat"
     ],
-    "district": null,
-    "governorate": "Mont-Liban",
-    "latitude": 34.11278,
-    "longitude": 35.665
+    "district": "Beirut",
+    "governorate": "Beirut",
+    "latitude": 33.8899,
+    "longitude": 35.4905
   },
   {
     "geoname_id": 8624750,
@@ -58445,25 +58431,6 @@
     "governorate": "Liban-Nord",
     "latitude": 34.27306,
     "longitude": 35.88778
-  },
-  {
-    "geoname_id": 281014,
-    "source": "geonames",
-    "feature_class": "P",
-    "feature_code": "PPL",
-    "name_ar": "عبرا",
-    "name_en": "Aabra",
-    "alt_names": [
-      "Aabra",
-      "Habra",
-      "`Abra",
-      "ʿbra",
-      "‘Abrā"
-    ],
-    "district": null,
-    "governorate": "South Governorate",
-    "latitude": 33.56667,
-    "longitude": 35.40583
   },
   {
     "geoname_id": 273739,

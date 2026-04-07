@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.event import Event
-from app.schemas.common import EventType, LocationMode
+from app.schemas.common import AttackSide, EventType, LocationMode
 from app.schemas.events import EventListResponse, EventRead, MapEventsResponse, MapPoint, RegionalEventRead
-from app.services.event_service import get_map_events, list_events
+from app.services.event_service import get_event_attack_side, get_map_events, list_events
 from app.services.live_updates import live_updates
 
 router = APIRouter(tags=["events"])
@@ -31,6 +31,7 @@ def _serialize_event(event: Event) -> EventRead:
         region_name=event.region.name if event.region else None,
         event_time=event.event_time,
         source_text=event.source_text,
+        attack_side=AttackSide(get_event_attack_side(event)) if get_event_attack_side(event) else None,
         latitude=event.latitude,
         longitude=event.longitude,
     )
@@ -77,6 +78,7 @@ def get_events_map(
                 location_name=event.location.name_ar if event.location else event.location_name_raw,
                 event_time=event.event_time,
                 source_text=event.source_text,
+                attack_side=AttackSide(get_event_attack_side(event)) if get_event_attack_side(event) else None,
             )
             for event in point_events
             if event.latitude is not None and event.longitude is not None
@@ -89,6 +91,7 @@ def get_events_map(
                 region_name=event.region.name,
                 event_time=event.event_time,
                 source_text=event.source_text,
+                attack_side=AttackSide(get_event_attack_side(event)) if get_event_attack_side(event) else None,
             )
             for event in regional_events
             if event.region is not None

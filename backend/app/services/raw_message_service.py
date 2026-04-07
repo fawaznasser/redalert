@@ -1,13 +1,31 @@
 from __future__ import annotations
 
+import json
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.raw_message import RawMessage
-from app.schemas.common import EventType
+from app.schemas.common import AttackSide, EventType
 from app.schemas.raw_messages import RawMessageRead
 from app.services.location_matcher import match_locations
 from app.services.parser import parse_message_text
+
+
+def _get_raw_message_attack_side(raw_message: RawMessage) -> str | None:
+    if not raw_message.raw_json:
+        return None
+    try:
+        payload = json.loads(raw_message.raw_json)
+    except (TypeError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    ocr_payload = payload.get("_ocr")
+    if not isinstance(ocr_payload, dict):
+        return None
+    attack_side = ocr_payload.get("attack_side")
+    return attack_side if attack_side in {"enemy_attack", "resistance_attack"} else None
 
 
 def serialize_raw_message(session: Session, raw_message: RawMessage) -> RawMessageRead:
@@ -25,6 +43,7 @@ def serialize_raw_message(session: Session, raw_message: RawMessage) -> RawMessa
         message_date=raw_message.message_date,
         ingested_at=raw_message.ingested_at,
         parsed_event_type=parsed_event_type,
+        attack_side=AttackSide(_get_raw_message_attack_side(raw_message)) if _get_raw_message_attack_side(raw_message) else None,
         event_types=event_types,
         candidate_locations=candidate_locations,
         matched_locations=[match.location.name_ar for match in matches.matches] if matches else [],

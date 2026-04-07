@@ -41,9 +41,20 @@ class Settings(BaseSettings):
     telegram_session: str | None = None
     telegram_channel: str | None = None
     telegram_secondary_channel: str | None = None
+    telegram_extra_channels: list[str] = []
     telegram_history_backfill_limit: int = 50
     telegram_poll_interval_seconds: int = 5
     telegram_edit_sync_limit: int = 15
+    start_telegram_listener_in_api: bool = True
+    ocr_enabled: bool = True
+    ocr_languages: str = "ar,en"
+    ocr_max_media_size_bytes: int = 6291456
+    ocr_min_trigger_chars: int = 6
+    ocr_queue_max_size: int = 64
+    ocr_worker_concurrency: int = 1
+    ocr_download_timeout_seconds: float = 8.0
+    ocr_processing_timeout_seconds: float = 12.0
+    ocr_extract_text_from_stickers: bool = False
     nominatim_enabled: bool = False
     nominatim_base_url: str = "https://nominatim.openstreetmap.org"
     nominatim_user_agent: str = "red-alert-dashboard/1.0"
@@ -74,6 +85,22 @@ class Settings(BaseSettings):
             return json.loads(text)
         return [item.strip() for item in text.split(",") if item.strip()]
 
+    @field_validator("telegram_extra_channels", mode="before")
+    @classmethod
+    def parse_telegram_extra_channels(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+
+        text = str(value).strip()
+        if not text:
+            return []
+        if text.startswith("["):
+            parsed = json.loads(text)
+            return [str(item).strip() for item in parsed if str(item).strip()]
+        return [item.strip() for item in text.replace("\n", ",").split(",") if item.strip()]
+
     @property
     def telegram_is_configured(self) -> bool:
         return bool(
@@ -87,7 +114,7 @@ class Settings(BaseSettings):
     @property
     def telegram_channels(self) -> list[str]:
         channels: list[str] = []
-        for value in (self.telegram_channel, self.telegram_secondary_channel):
+        for value in (self.telegram_channel, self.telegram_secondary_channel, *self.telegram_extra_channels):
             if value:
                 normalized = str(value).strip()
                 if normalized and normalized not in channels:

@@ -1,4 +1,4 @@
-import { eventTypeLabel, formatDateTime, formatRelativeTime, formatTimeRemaining } from "@/lib/format";
+import { displayEventTypeLabel, formatDateTime, formatRelativeTime, formatTimeRemaining } from "@/lib/format";
 import type { EventRead } from "@/types";
 
 interface EventFeedProps {
@@ -34,7 +34,7 @@ export default function EventFeed({ events }: EventFeedProps) {
         <article key={event.id} className="rounded-[1.6rem] border border-white/60 bg-white/80 p-4 shadow-panel backdrop-blur">
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badgeTone[event.event_type]}`}>
-              {eventTypeLabel(event.event_type)}
+              {displayEventTypeLabel(event)}
             </span>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
               {event.location_mode === "exact" ? "Exact" : "Regional"}

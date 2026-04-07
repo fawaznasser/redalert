@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleMarker, MapContainer, Pane, Polyline, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { eventTypeLabel, formatDateTime, formatRelativeTime } from "@/lib/format";
 import type { MapPoint } from "@/types";
@@ -15,6 +15,12 @@ interface DashboardMapProps {
   hasBeirutFighterThreat?: boolean;
   hasBeirutBoundFighterThreat?: boolean;
   hasSouthFighterThreat?: boolean;
+}
+
+interface DroneCluster {
+  id: string;
+  points: MapPoint[];
+  center: [number, number];
 }
 
 const markerStyles = {
@@ -31,6 +37,8 @@ const LEBANON_BOUNDS: [[number, number], [number, number]] = [
 const MAP_CENTER: [number, number] = [33.88, 35.86];
 const MAP_DEFAULT_ZOOM = 9;
 const MAP_MAX_ZOOM = 18;
+const DRONE_CLUSTER_THRESHOLD = 0.03;
+
 const COAST_FIGHTER_PATH: [number, number][] = [
   [33.1205, 35.1032],
   [33.272, 35.2038],
@@ -76,6 +84,72 @@ function interpolatePath(path: [number, number][], progress: number): [number, n
   ];
 }
 
+function circleOrbit(center: [number, number], progress: number, radius: number): [number, number] {
+  const angle = progress * Math.PI * 2;
+  return [center[0] + Math.sin(angle) * radius, center[1] + Math.cos(angle) * radius];
+}
+
+function buildOrbitPath(center: [number, number], radius: number, steps = 28): [number, number][] {
+  return Array.from({ length: steps + 1 }, (_, index) => {
+    const angle = (index / steps) * Math.PI * 2;
+    return [center[0] + Math.sin(angle) * radius, center[1] + Math.cos(angle) * radius];
+  });
+}
+
+function distance(a: [number, number], b: [number, number]): number {
+  const lat = a[0] - b[0];
+  const lng = a[1] - b[1];
+  return Math.sqrt(lat * lat + lng * lng);
+}
+
+function clusterDronePoints(points: MapPoint[]): { clusters: DroneCluster[]; singles: MapPoint[] } {
+  const drones = points.filter((point) => point.event_type === "drone_movement");
+  const nonDrones = points.filter((point) => point.event_type !== "drone_movement");
+  const dronesByMessage = new Map<string, MapPoint[]>();
+
+  for (const point of drones) {
+    const bucket = dronesByMessage.get(point.raw_message_id) ?? [];
+    bucket.push(point);
+    dronesByMessage.set(point.raw_message_id, bucket);
+  }
+
+  const clusters: DroneCluster[] = [];
+  const singles: MapPoint[] = [...nonDrones];
+  let clusterIndex = 0;
+
+  dronesByMessage.forEach((messagePoints, rawMessageId) => {
+    const provisional: { points: MapPoint[]; center: [number, number] }[] = [];
+
+    for (const point of messagePoints) {
+      const pointCenter: [number, number] = [point.latitude, point.longitude];
+      const existing = provisional.find((cluster) => distance(cluster.center, pointCenter) <= DRONE_CLUSTER_THRESHOLD);
+      if (!existing) {
+        provisional.push({ points: [point], center: pointCenter });
+        continue;
+      }
+
+      existing.points.push(point);
+      const lat = existing.points.reduce((sum, item) => sum + item.latitude, 0) / existing.points.length;
+      const lng = existing.points.reduce((sum, item) => sum + item.longitude, 0) / existing.points.length;
+      existing.center = [lat, lng];
+    }
+
+    provisional.forEach((cluster) => {
+      if (cluster.points.length < 2) {
+        singles.push(cluster.points[0]);
+        return;
+      }
+      clusters.push({
+        id: `drone-cluster-${rawMessageId}-${clusterIndex++}`,
+        points: cluster.points,
+        center: cluster.center,
+      });
+    });
+  });
+
+  return { clusters, singles };
+}
+
 function MapViewportController() {
   const map = useMap();
 
@@ -107,6 +181,8 @@ export default function DashboardMap({
           aboveBeirut: "فوق بيروت",
           aboveSouth: "فوق الجنوب",
           fighterMovement: "حركة مقاتلات",
+          droneSwarm: "تحليق مسيّرات فوق عدة بلدات",
+          villages: "البلدات",
           unknown: "موقع غير معروف",
           coastActive: "هناك حركة مقاتلات نشطة على الساحل الآن.",
           beirutBoundActive: "هناك حركة مقاتلات باتجاه بيروت الآن.",
@@ -117,11 +193,13 @@ export default function DashboardMap({
       : {
           fightersThreat: "Fighters Threat",
           helicopterThreat: "Helicopter Threat",
-          coast: "الساحل",
-          towardBeirut: "باتجاه بيروت",
-          aboveBeirut: "فوق بيروت",
-          aboveSouth: "فوق الجنوب",
+          coast: "Coast",
+          towardBeirut: "Toward Beirut",
+          aboveBeirut: "Above Beirut",
+          aboveSouth: "Above South",
           fighterMovement: "Fighter movement",
+          droneSwarm: "Drone movement above nearby villages",
+          villages: "Villages",
           unknown: "Unknown location",
           coastActive: "Coastal fighter movement is active right now.",
           beirutBoundActive: "Fighter movement toward Beirut is active right now.",
@@ -132,6 +210,9 @@ export default function DashboardMap({
 
   const [beirutBoundProgress, setBeirutBoundProgress] = useState(0);
   const [fighterSweepProgress, setFighterSweepProgress] = useState(0);
+  const [droneOrbitProgress, setDroneOrbitProgress] = useState(0);
+
+  const { clusters: droneClusters, singles: renderedPoints } = useMemo(() => clusterDronePoints(points), [points]);
 
   useEffect(() => {
     if (!hasBeirutBoundFighterThreat && !hasSouthFighterThreat && !points.some((point) => point.event_type === "fighter_jet_movement")) {
@@ -153,6 +234,22 @@ export default function DashboardMap({
 
     return () => window.clearInterval(interval);
   }, [hasBeirutBoundFighterThreat, hasSouthFighterThreat, points]);
+
+  useEffect(() => {
+    if (droneClusters.length === 0) {
+      setDroneOrbitProgress(0);
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setDroneOrbitProgress((current) => {
+        const next = current + 0.025;
+        return next >= 1 ? 0 : next;
+      });
+    }, 140);
+
+    return () => window.clearInterval(interval);
+  }, [droneClusters.length]);
 
   const beirutBoundCenter = interpolatePath(BEIRUT_FIGHTER_PATH, beirutBoundProgress);
   const southFighterCenter = interpolatePath(SOUTH_FIGHTER_PATH, fighterSweepProgress);
@@ -207,14 +304,7 @@ export default function DashboardMap({
             <Polyline
               pane="fighter-pane"
               positions={COAST_FIGHTER_PATH}
-              pathOptions={{
-                color: "#ff4d5f",
-                weight: 5,
-                opacity: 0.9,
-                lineCap: "round",
-                lineJoin: "round",
-                dashArray: "12 10",
-              }}
+              pathOptions={{ color: "#ff4d5f", weight: 5, opacity: 0.9, lineCap: "round", lineJoin: "round", dashArray: "12 10" }}
             />
             {COAST_FIGHTER_MARKERS.map((center, index) => (
               <CircleMarker
@@ -222,12 +312,7 @@ export default function DashboardMap({
                 center={center}
                 pane="fighter-pane"
                 radius={7}
-                pathOptions={{
-                  color: "#ff99a2",
-                  fillColor: "#ff4d5f",
-                  fillOpacity: 0.95,
-                  weight: 3,
-                }}
+                pathOptions={{ color: "#ff99a2", fillColor: "#ff4d5f", fillOpacity: 0.95, weight: 3 }}
               >
                 <Tooltip direction="top" offset={[0, -18]}>
                   <div className="space-y-1">
@@ -245,12 +330,7 @@ export default function DashboardMap({
             center={beirutBoundCenter}
             pane="fighter-pane"
             radius={9}
-            pathOptions={{
-              color: "#ff99a2",
-              fillColor: "#ff4d5f",
-              fillOpacity: 0.95,
-              weight: 3,
-            }}
+            pathOptions={{ color: "#ff99a2", fillColor: "#ff4d5f", fillOpacity: 0.95, weight: 3 }}
           >
             <Tooltip direction="top" offset={[0, -18]}>
               <div className="space-y-1">
@@ -266,25 +346,13 @@ export default function DashboardMap({
             <Polyline
               pane="fighter-pane"
               positions={BEIRUT_FIGHTER_PATH}
-              pathOptions={{
-                color: "#ff4d5f",
-                weight: 5,
-                opacity: 0.9,
-                lineCap: "round",
-                lineJoin: "round",
-                dashArray: "10 8",
-              }}
+              pathOptions={{ color: "#ff4d5f", weight: 5, opacity: 0.9, lineCap: "round", lineJoin: "round", dashArray: "10 8" }}
             />
             <CircleMarker
               center={BEIRUT_FIGHTER_PATH[1]}
               pane="fighter-pane"
               radius={7}
-              pathOptions={{
-                color: "#ff99a2",
-                fillColor: "#ff4d5f",
-                fillOpacity: 0.95,
-                weight: 3,
-              }}
+              pathOptions={{ color: "#ff99a2", fillColor: "#ff4d5f", fillOpacity: 0.95, weight: 3 }}
             >
               <Tooltip direction="top" offset={[0, -18]}>
                 <div className="space-y-1">
@@ -301,12 +369,7 @@ export default function DashboardMap({
             center={southFighterCenter}
             pane="fighter-pane"
             radius={9}
-            pathOptions={{
-              color: "#ff99a2",
-              fillColor: "#ff4d5f",
-              fillOpacity: 0.95,
-              weight: 3,
-            }}
+            pathOptions={{ color: "#ff99a2", fillColor: "#ff4d5f", fillOpacity: 0.95, weight: 3 }}
           >
             <Tooltip direction="top" offset={[0, -18]}>
               <div className="space-y-1">
@@ -317,7 +380,52 @@ export default function DashboardMap({
           </CircleMarker>
         ) : null}
 
-        {points.map((point) => (
+        {droneClusters.map((cluster) => {
+          const radius = 0.005 + Math.min(cluster.points.length, 6) * 0.00055;
+          const orbitCenter = circleOrbit(cluster.center, droneOrbitProgress, radius);
+          const orbitPath = buildOrbitPath(cluster.center, radius);
+          const villageNames = Array.from(new Set(cluster.points.map((point) => point.location_name).filter(Boolean))) as string[];
+
+          return (
+            <div key={cluster.id}>
+              <Polyline
+                pane="drone-pane"
+                positions={orbitPath}
+                pathOptions={{ color: "#75b5ff", weight: 2, opacity: 0.7, dashArray: "5 6" }}
+              />
+              <CircleMarker
+                center={cluster.center}
+                pane="drone-pane"
+                radius={Math.min(36, 20 + cluster.points.length * 2)}
+                pathOptions={{ color: "#75b5ff", fillColor: "#2d7cff", fillOpacity: 0.12, weight: 2 }}
+              />
+              <CircleMarker
+                center={orbitCenter}
+                pane="drone-pane"
+                radius={10}
+                pathOptions={{ color: "#75b5ff", fillColor: "#2d7cff", fillOpacity: 0.96, weight: 3 }}
+              >
+                <Tooltip direction="top" offset={[0, -18]}>
+                  <div className="space-y-1">
+                    <p className="font-semibold">{t.droneSwarm}</p>
+                    <p className="text-xs">
+                      {t.villages}: {villageNames.join("، ")}
+                    </p>
+                  </div>
+                </Tooltip>
+                <Popup>
+                  <div className="space-y-1">
+                    <p className="font-semibold">{t.droneSwarm}</p>
+                    <p>{t.villages}: {villageNames.join("، ")}</p>
+                    <p>{cluster.points.length} points</p>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            </div>
+          );
+        })}
+
+        {renderedPoints.map((point) => (
           <CircleMarker
             key={point.id}
             center={

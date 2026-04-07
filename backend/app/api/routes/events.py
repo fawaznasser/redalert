@@ -70,6 +70,7 @@ def get_events_map(
         points=[
             MapPoint(
                 id=event.id,
+                raw_message_id=event.raw_message_id,
                 event_type=EventType(event.event_type),
                 latitude=event.latitude or 0.0,
                 longitude=event.longitude or 0.0,

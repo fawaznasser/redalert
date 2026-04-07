@@ -35,6 +35,7 @@ class EventListResponse(ApiModel):
 
 class MapPoint(ApiModel):
     id: str
+    raw_message_id: str
     event_type: EventType
     latitude: float
     longitude: float

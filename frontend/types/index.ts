@@ -28,6 +28,7 @@ export interface EventListResponse {
 
 export interface MapPoint {
   id: string;
+  raw_message_id: string;
   event_type: EventType;
   latitude: number;
   longitude: number;

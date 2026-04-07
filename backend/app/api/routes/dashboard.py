@@ -83,6 +83,7 @@ def get_dashboard(
     map_points = [
         MapPoint(
             id=event.id,
+            raw_message_id=event.raw_message_id,
             event_type=EventType(event.event_type),
             latitude=event.latitude,
             longitude=event.longitude,
